@@ -412,12 +412,19 @@ def update_image_visual_state(
         )
 
 
+def _jsonb_nonempty(col_ref: str) -> str:
+    """Predicato SQL per colonna JSONB non vuota (Postgres)."""
+    return (
+        f"({col_ref} IS NOT NULL "
+        f"AND {col_ref}::text NOT IN ('null', '{{}}', '[]'))"
+    )
+
+
 def _visual_output_sql_predicate(alias: str = "i") -> str:
     """Immagine elaborata da Visual Producer (senza richiedere copy)."""
     a = alias
     return (
-        f"({a}.visual_score IS NOT NULL OR "
-        f"({a}.retouch_json IS NOT NULL AND TRIM(COALESCE({a}.retouch_json, '')) <> ''))"
+        f"({a}.visual_score IS NOT NULL OR {_jsonb_nonempty(f'{a}.retouch_json')})"
     )
 
 
@@ -1080,7 +1087,7 @@ def count_images_for_manual_publication_review(
     if pending_manual_only:
         frag += " AND is_valid_for_publication IS NULL"
     if require_ai_output:
-        frag += " AND copy_json IS NOT NULL AND TRIM(COALESCE(copy_json, '')) <> ''"
+        frag += f" AND {_jsonb_nonempty('copy_json')}"
     sql = f"SELECT COUNT(*) FROM images WHERE 1=1{frag}"
     with _connect(db_path) as conn:
         row = conn.execute(sql, tuple(params)).fetchone()
@@ -1121,7 +1128,7 @@ def list_images_for_manual_publication_review(
     if pending_manual_only:
         frag += " AND is_valid_for_publication IS NULL"
     if require_ai_output:
-        frag += " AND copy_json IS NOT NULL AND TRIM(COALESCE(copy_json, '')) <> ''"
+        frag += f" AND {_jsonb_nonempty('copy_json')}"
     sql += frag + " ORDER BY id DESC LIMIT %s OFFSET %s"
     qparams = list(params)
     qparams.extend([max_rows, off])
