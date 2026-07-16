@@ -5,14 +5,34 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _repo_root() -> Path:
-    """Root del repository (cartella che contiene `src/`)."""
+    """Root del repository (cartella che contiene `src/` o `config/`)."""
     import os
 
     override = (os.environ.get("SOCIAL_AUTOMATION_ROOT") or "").strip()
     if override:
         p = Path(override).expanduser().resolve()
-        if p.is_dir() and (p / "src" / "social_automation").is_dir():
+        if p.is_dir():
             return p
+
+    def _looks_like_project_root(candidate: Path) -> bool:
+        if not candidate.is_dir():
+            return False
+        if (candidate / "config").is_dir() and (
+            (candidate / "api").is_dir() or (candidate / "pyproject.toml").is_file()
+        ):
+            return True
+        return (candidate / "src" / "social_automation").is_dir()
+
+    if os.environ.get("VERCEL"):
+        cwd = Path.cwd()
+        if _looks_like_project_root(cwd):
+            return cwd.resolve()
+
+    here = Path(__file__).resolve().parent
+    for candidate in (here, *here.parents):
+        if _looks_like_project_root(candidate):
+            return candidate.resolve()
+
     return Path(__file__).resolve().parents[2]
 
 
@@ -525,10 +545,15 @@ def load_settings() -> Settings:
 
     s = Settings()
     updates: dict = {}
-    if not (s.database_url or "").strip():
-        env_db = (os.environ.get("DATABASE_URL") or os.environ.get("TEST_DATABASE_URL") or "").strip()
-        if env_db:
-            updates["database_url"] = env_db
+    env_db = (os.environ.get("DATABASE_URL") or os.environ.get("TEST_DATABASE_URL") or "").strip()
+    if env_db and not (s.database_url or "").strip():
+        updates["database_url"] = env_db
+    env_backend = (os.environ.get("DB_BACKEND") or "").strip().lower()
+    if env_backend:
+        updates["db_backend"] = env_backend
+    elif (updates.get("database_url") or s.database_url or env_db):
+        if (s.db_backend or "sqlite").strip().lower() == "sqlite":
+            updates["db_backend"] = "postgres"
     if not (s.blob_read_write_token or "").strip():
         env_blob = (os.environ.get("BLOB_READ_WRITE_TOKEN") or "").strip()
         if env_blob:

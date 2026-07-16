@@ -793,6 +793,15 @@ def count_ai_output_images(
     return int(row[0]) if row else 0
 
 
+def count_running_batches(db_path: Path) -> int:
+    ensure_db_schema(db_path)
+    with _connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM batches WHERE status = 'running'"
+        ).fetchone()
+    return int(row[0]) if row else 0
+
+
 def backfill_image_quality_evaluations(
     db_path: Path,
     *,

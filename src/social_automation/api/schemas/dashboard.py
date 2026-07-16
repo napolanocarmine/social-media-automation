@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 class HealthResponse(BaseModel):
     status: str = "ok"
     service: str = "social-media-automation-api"
+    db_ok: bool | None = None
+    db_backend: str | None = None
 
 
 class DashboardStatsResponse(BaseModel):

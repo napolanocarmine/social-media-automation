@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -11,6 +10,7 @@ from social_automation.app_timezone import now_app
 from social_automation.db.store import (
     count_ai_output_images,
     count_plannable_images,
+    count_running_batches,
     ensure_db_schema,
     list_due_events,
 )
@@ -45,11 +45,7 @@ def get_workflow_stats(db_path: Path, settings: Any) -> dict[str, int]:
     running_batches = 0
     try:
         ensure_db_schema(db_path)
-        with sqlite3.connect(db_path) as conn:
-            row2 = conn.execute(
-                "SELECT COUNT(*) FROM batches WHERE status = 'running'"
-            ).fetchone()
-            running_batches = int(row2[0]) if row2 else 0
+        running_batches = count_running_batches(db_path)
     except Exception:
         pass
     return {
