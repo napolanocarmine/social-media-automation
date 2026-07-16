@@ -38,3 +38,11 @@ def test_oidc_plus_store_id_is_configured(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setenv("BLOB_STORE_ID", "store_myblob")
     assert resolve_blob_store_id_from_env() == "myblob"
     assert blob_storage_configured_from_env() is True
+
+
+def test_vercel_store_id_without_oidc_token_is_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("VERCEL", "1")
+    monkeypatch.setenv("BLOB_STORE_ID", "store_myblob")
+    assert blob_storage_configured_from_env() is True

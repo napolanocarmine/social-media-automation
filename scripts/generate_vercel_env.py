@@ -100,6 +100,7 @@ def main() -> None:
         "APP_TIMEZONE=Europe/Rome",
         "DB_BACKEND=postgres",
         "STORAGE_BACKEND=vercel_blob",
+        "BLOB_ACCESS=private",
         "",
         "# === Google Drive (obbligatori per Seleziona / anteprime) ===",
     ]

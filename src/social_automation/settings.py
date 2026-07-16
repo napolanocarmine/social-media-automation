@@ -569,11 +569,22 @@ def load_settings() -> Settings:
         elif (s.storage_backend or "local").strip().lower() == "local":
             updates["storage_backend"] = "vercel_blob"
     if not (s.blob_read_write_token or "").strip():
-        from social_automation.env import resolve_blob_read_write_token_from_env
+        from social_automation.env import (
+            resolve_blob_read_write_token_from_env,
+            resolve_blob_store_id_from_env,
+        )
 
         env_blob = resolve_blob_read_write_token_from_env()
         if env_blob:
             updates["blob_read_write_token"] = env_blob
+    env_blob_access = (os.environ.get("BLOB_ACCESS") or "").strip().lower()
+    if env_blob_access in {"public", "private"}:
+        updates["blob_access"] = env_blob_access
+    elif on_vercel:
+        from social_automation.env import resolve_blob_store_id_from_env
+
+        if resolve_blob_store_id_from_env():
+            updates["blob_access"] = "private"
     if not (s.cron_secret or "").strip():
         env_cron = (os.environ.get("CRON_SECRET") or "").strip()
         if env_cron:
