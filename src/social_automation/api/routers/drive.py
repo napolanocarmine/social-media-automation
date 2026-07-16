@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 
 from social_automation.api.deps import SettingsDep
 from social_automation.api.schemas.drive_batches import (
@@ -12,7 +12,7 @@ from social_automation.services.batch_runner import serialize_drive_asset
 from social_automation.services.drive_selection import (
     load_drive_assets_for_selection,
 )
-from social_automation.services.drive_thumbnails import get_drive_thumbnail
+from social_automation.services.drive_thumbnails import get_drive_thumbnail_bytes
 
 DRIVE_PAGE_SIZE_DEFAULT = 12
 
@@ -64,8 +64,18 @@ def drive_thumbnail(
     file_id: str,
     settings: SettingsDep,
     mime_type: str = Query(default="image/jpeg"),
-) -> FileResponse:
-    path = get_drive_thumbnail(settings, file_id=file_id, mime_type=mime_type, open_browser=False)
-    if path is None:
+) -> Response:
+    result = get_drive_thumbnail_bytes(
+        settings,
+        file_id=file_id,
+        mime_type=mime_type,
+        open_browser=False,
+    )
+    if result is None:
         raise HTTPException(status_code=404, detail="Anteprima non disponibile")
-    return FileResponse(path)
+    content, media_type = result
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
