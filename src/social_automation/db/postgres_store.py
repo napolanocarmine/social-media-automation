@@ -27,6 +27,17 @@ def _scalar_row(row: dict[str, Any] | None) -> Any:
     return next(iter(row.values()))
 
 
+def _normalize_media_format(media_format: MediaFormat | str | None) -> str:
+    if media_format is None:
+        return MediaFormat.POST.value
+    if isinstance(media_format, MediaFormat):
+        return media_format.value
+    raw = str(media_format).strip().lower()
+    if raw in {MediaFormat.POST.value, MediaFormat.STORY.value}:
+        return raw
+    return MediaFormat.POST.value
+
+
 def set_database_url(url: str) -> None:
     global _database_url
     _database_url = url.strip()
