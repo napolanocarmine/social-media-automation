@@ -1172,7 +1172,7 @@ def add_planning_event(
         raise ValueError("event_type non può essere vuoto")
     scheduled = scheduled_for_db_iso(scheduled_for)
     with _connect(db_path) as conn:
-        cur = conn.execute(
+        row = conn.execute(
             """
             INSERT INTO planning_events(
                 image_id,
@@ -1268,12 +1268,13 @@ def add_story_schedule_rule(
     with _connect(db_path) as conn:
         if not _image_has_story_render(conn, image_id):
             raise ValueError("L'immagine non ha un render story registrato (render_ig_story/render_fb_story).")
-        cur = conn.execute(
+        row = conn.execute(
             """
             INSERT INTO story_schedule_rules(
                 image_id, platform, schedule_mode, scheduled_for, weekday, time_local, timezone, active, detail
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, 1, %s)
+            RETURNING id
             """,
             (
                 int(image_id),
@@ -1285,8 +1286,8 @@ def add_story_schedule_rule(
                 tz,
                 (detail or "").strip() or None,
             ),
-        )
-        return int(cur.lastrowid)
+        ).fetchone()
+        return int(row["id"])
 
 
 def list_story_schedule_rules(
@@ -1420,6 +1421,7 @@ def create_batch(
                 media_format
             )
             VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING id
             """,
             (
                 "running",
@@ -1429,8 +1431,8 @@ def create_batch(
                 (note or "").strip() or None,
                 fmt,
             ),
-        )
-        return int(cur.lastrowid)
+        ).fetchone()
+        return int(row["id"])
 
 
 def add_batch_item(
