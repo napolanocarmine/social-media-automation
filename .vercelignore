@@ -1,0 +1,14 @@
+# Keep Python function bundles small (no static analysis — all files are included by default).
+frontend/
+tests/
+docs/
+scripts/
+docker/
+.github/
+models/
+.venv/
+.pytest_cache/
+.ruff_cache/
+**/__pycache__/
+**/*.pyc
+**/.DS_Store

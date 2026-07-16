@@ -9,7 +9,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 from PIL import Image
 
 from social_automation.settings import Settings, repo_root
@@ -88,7 +87,9 @@ def _inference_session(model_path_str: str) -> Any:
     return ort.InferenceSession(model_path_str, providers=["CPUExecutionProvider"])
 
 
-def _preprocess_rgb(path: Path) -> np.ndarray:
+def _preprocess_rgb(path: Path) -> Any:
+    import numpy as np
+
     im = Image.open(path).convert("RGB")
     im = im.resize((_INPUT_SIZE, _INPUT_SIZE), Image.Resampling.LANCZOS)
     arr = np.asarray(im, dtype=np.float32) / 255.0
@@ -120,6 +121,8 @@ def evaluate_image_quality(
     inp = sess.get_inputs()[0]
     out = sess.get_outputs()[0]
     batch = _preprocess_rgb(image_path)
+    import numpy as np
+
     logits = sess.run([out.name], {inp.name: batch})[0]
     row = np.asarray(logits[0], dtype=np.float64)
     ex = np.exp(row - np.max(row))

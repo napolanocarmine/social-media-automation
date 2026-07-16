@@ -15,7 +15,8 @@
   ],
   "functions": {
     "api/index.py": {
-      "maxDuration": 300
+      "maxDuration": 300,
+      "excludeFiles": "{frontend/**,tests/**,docs/**,scripts/**,docker/**,.github/**,models/**,src/social_automation/web/**,**/__pycache__/**,**/*.pyc,**/.pytest_cache/**,**/.ruff_cache/**,**/.venv/**,**/node_modules/**,**/.git/**}"
     }
   },
   "headers": [
