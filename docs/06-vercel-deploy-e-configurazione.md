@@ -31,9 +31,9 @@ social-media-automation-vercel/
 ```json
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd frontend && npm ci && npm run build",
+  "buildCommand": "npm run build --prefix frontend",
   "outputDirectory": "frontend/dist",
-  "installCommand": "cd frontend && npm ci && pip install -r requirements.txt",
+  "installCommand": "npm ci --prefix frontend && pip install -r requirements.txt && pip install .",
   "framework": null,
   "rewrites": [
     {
