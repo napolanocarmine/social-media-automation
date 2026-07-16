@@ -12,7 +12,7 @@ Documentazione completa in [`docs/`](./docs/README.md).
 | API | FastAPI serverless (`api/index.py`) |
 | Database | Neon Postgres (`DB_BACKEND=postgres`) |
 | Media | Vercel Blob (`STORAGE_BACKEND=vercel_blob`) |
-| Cron | Dispatch ogni 15 min + batch queue ogni 1 min |
+| Cron | Dispatch ogni ora (11:00–22:59 Europe/Rome) via GitHub Actions o Vercel Pro |
 | Dev locale | SQLite + filesystem (`DB_BACKEND=sqlite`) |
 
 ## Quick start locale
@@ -41,10 +41,24 @@ Frontend: `cd frontend && npm run dev`
 
 | Path | Schedule | Funzione |
 |------|----------|----------|
-| `GET /api/cron/dispatch` | `*/15 * * * *` | Pubblicazione Meta |
-| `GET /api/cron/process-batch` | `* * * * *` | 1 foto batch AI |
+| `GET /api/cron/dispatch` | ogni ora, 11:00–22:59 `Europe/Rome` | Pubblicazione Meta |
+| `GET /api/cron/process-batch` | manuale / scheduler esterno | 1 foto batch AI |
 
 Autenticazione: header `Authorization: Bearer $CRON_SECRET` o query `?secret=`.
+
+### Scheduler consigliato
+
+| Piano Vercel | Dispatch |
+|--------------|----------|
+| **Hobby** | [GitHub Actions](.github/workflows/cron-dispatch.yml) — gratis, rispetta DST |
+| **Pro** | `vercel.json` (`0 * * * *`) + guard orario in API |
+
+Su Hobby **rimuovi** la sezione `"crons"` da `vercel.json` prima del deploy, poi configura i secrets GitHub:
+
+- `VERCEL_APP_URL` — es. `https://tuo-app.vercel.app`
+- `CRON_SECRET` — stesso valore configurato su Vercel
+
+Variabili opzionali (Repository → Settings → Variables): `DISPATCH_CRON_HOUR_START=11`, `DISPATCH_CRON_HOUR_END=22`.
 
 ## OAuth Google Drive
 

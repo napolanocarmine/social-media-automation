@@ -503,6 +503,18 @@ class Settings(BaseSettings):
         default="",
         description="Secret per endpoint cron Vercel (CRON_SECRET)",
     )
+    dispatch_cron_hour_start: int = Field(
+        default=11,
+        ge=0,
+        le=23,
+        description="Ora locale (APP_TIMEZONE) inizio finestra dispatch automatico",
+    )
+    dispatch_cron_hour_end: int = Field(
+        default=22,
+        ge=0,
+        le=23,
+        description="Ora locale (APP_TIMEZONE) fine finestra dispatch automatico (inclusa)",
+    )
 
     config_dir: Path = Field(default_factory=lambda: Path("config"))
     output_dir: Path = Field(default_factory=lambda: Path("output"))

@@ -14,16 +14,6 @@
       "destination": "/index.html"
     }
   ],
-  "crons": [
-    {
-      "path": "/api/cron/dispatch",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/process-batch",
-      "schedule": "* * * * *"
-    }
-  ],
   "functions": {
     "api/index.py": {
       "maxDuration": 300

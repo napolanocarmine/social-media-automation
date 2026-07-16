@@ -27,6 +27,18 @@ def now_app(settings: Settings | None = None) -> datetime:
     return datetime.now(app_tz(settings))
 
 
+def is_within_dispatch_cron_window(settings: Settings | None = None) -> bool:
+    """True se l'ora corrente (APP_TIMEZONE) è nella finestra dispatch cron configurata."""
+    if settings is None:
+        return True
+    start = int(getattr(settings, "dispatch_cron_hour_start", 11))
+    end = int(getattr(settings, "dispatch_cron_hour_end", 22))
+    if start > end:
+        return True
+    hour = now_app(settings).hour
+    return start <= hour <= end
+
+
 def today_app(settings: Settings | None = None) -> date:
     return now_app(settings).date()
 

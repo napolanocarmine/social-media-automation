@@ -1,0 +1,32 @@
+name: Cron dispatch Meta
+
+on:
+  schedule:
+    # Ogni ora UTC; la finestra 11–22 Europe/Rome è applicata nello step sotto.
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch (solo 11:00–22:59 Europe/Rome)
+        env:
+          VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DISPATCH_CRON_HOUR_START: ${{ vars.DISPATCH_CRON_HOUR_START || '11' }}
+          DISPATCH_CRON_HOUR_END: ${{ vars.DISPATCH_CRON_HOUR_END || '22' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_APP_URL:-}" ] || [ -z "${CRON_SECRET:-}" ]; then
+            echo "Configura i secrets VERCEL_APP_URL e CRON_SECRET nel repository GitHub."
+            exit 1
+          fi
+          HOUR=$(TZ=Europe/Rome date +%H)
+          START=${DISPATCH_CRON_HOUR_START:-11}
+          END=${DISPATCH_CRON_HOUR_END:-22}
+          if [ "$HOUR" -lt "$START" ] || [ "$HOUR" -gt "$END" ]; then
+            echo "Fuori finestra pubblicazione (${HOUR}:00 Europe/Rome, finestra ${START}-${END}). Skip."
+            exit 0
+          fi
+          curl -fsS "${VERCEL_APP_URL%/}/api/cron/dispatch?secret=${CRON_SECRET}"
