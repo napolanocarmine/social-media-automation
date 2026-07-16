@@ -945,7 +945,7 @@ def list_plannable_image_ids(
     sql = f"SELECT id FROM images WHERE 1=1{frag} ORDER BY id DESC"
     with _connect(db_path) as conn:
         rows = conn.execute(sql, tuple(params)).fetchall()
-    return [int(r[0]) for r in rows]
+    return [int(r["id"]) for r in rows]
 
 
 def get_images_by_ids(db_path: Path, image_ids: list[int]) -> list[dict[str, Any]]:
