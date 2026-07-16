@@ -43,6 +43,9 @@ api = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/social_automation"]
 
+[tool.vercel]
+entrypoint = "api/index.py"
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
