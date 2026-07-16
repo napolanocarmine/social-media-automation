@@ -33,6 +33,7 @@ def create_app() -> FastAPI:
         version="0.1.0",
         docs_url=f"{API_V1_PREFIX}/docs",
         openapi_url=f"{API_V1_PREFIX}/openapi.json",
+        redirect_slashes=False,
     )
 
     cors_origins = os.getenv(

@@ -7,9 +7,10 @@ name = "social-media-automation"
 version = "0.1.0"
 description = "Pipeline: Drive → Story AI → validazione → pianificazione IG/FB (UI React + FastAPI)"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.115.0",
+    "fastapi>=0.115.0,<0.137.0",
+    "starlette>=0.46.0,<1.3.0",
     "uvicorn>=0.32.0",
     "sse-starlette>=2.1.0",
     "google-api-python-client>=2.100.0",
