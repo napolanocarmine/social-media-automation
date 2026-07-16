@@ -572,6 +572,15 @@ def load_settings() -> Settings:
         env_cron = (os.environ.get("CRON_SECRET") or "").strip()
         if env_cron:
             updates["cron_secret"] = env_cron
+    for field, env_key in (
+        ("google_credentials_json", "GOOGLE_CREDENTIALS_JSON"),
+        ("google_refresh_token", "GOOGLE_REFRESH_TOKEN"),
+        ("google_redirect_uri", "GOOGLE_REDIRECT_URI"),
+    ):
+        if not (getattr(s, field) or "").strip():
+            val = (os.environ.get(env_key) or "").strip()
+            if val:
+                updates[field] = val
     if updates:
         s = s.model_copy(update=updates)
     path_raw = _strip_env_value_quotes((s.meta_page_token_file or "").strip())

@@ -41,13 +41,7 @@ def run_process_photo(
             "drive_root_folder_id nel file categorie."
         )
 
-    oauth_browser = (settings.google_oauth_browser or "").strip() or None
-    drive_client = DriveClient.from_paths(
-        settings.google_credentials_path,
-        settings.google_token_path,
-        open_browser=open_browser,
-        oauth_browser=oauth_browser,
-    )
+    drive_client = DriveClient.from_settings(settings, open_browser=open_browser)
     selected, aliases = pick_latest_asset(
         drive_client,
         folder_id,

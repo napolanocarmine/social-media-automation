@@ -37,13 +37,7 @@ def get_drive_thumbnail(
     cache_path = drive_cache_path(settings, file_id, mime_type)
     if cache_path.is_file():
         return cache_path
-    oauth_browser = (settings.google_oauth_browser or "").strip() or None
-    drive_client = DriveClient.from_paths(
-        settings.google_credentials_path,
-        settings.google_token_path,
-        open_browser=open_browser,
-        oauth_browser=oauth_browser,
-    )
+    drive_client = DriveClient.from_settings(settings, open_browser=open_browser)
     try:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         cache_path.write_bytes(drive_client.download_file_bytes(file_id))

@@ -40,7 +40,7 @@ class DriveClient:
         return cls(service)
 
     @classmethod
-    def from_settings(cls, settings) -> DriveClient:
+    def from_settings(cls, settings, *, open_browser: bool = True) -> DriveClient:
         creds_json = (getattr(settings, "google_credentials_json", "") or "").strip()
         refresh = (getattr(settings, "google_refresh_token", "") or "").strip()
         if creds_json and refresh:
@@ -52,11 +52,27 @@ class DriveClient:
                 refresh_token=refresh,
             )
             return cls(service)
+        import os
+
+        if os.environ.get("VERCEL") or creds_json:
+            missing = []
+            if not creds_json:
+                missing.append("GOOGLE_CREDENTIALS_JSON")
+            if not refresh:
+                missing.append("GOOGLE_REFRESH_TOKEN")
+            raise FileNotFoundError(
+                "Su Vercel servono "
+                + " e ".join(missing)
+                + ". Genera .env.vercel.import con scripts/generate_vercel_env.py "
+                "e importalo in Vercel → Environment Variables. "
+                "Refresh token: `python3 -m social_automation drive-auth` in locale, "
+                "oppure GET /api/v1/oauth/google/start (client OAuth Web)."
+            )
         oauth_browser = (settings.google_oauth_browser or "").strip() or None
         return cls.from_paths(
             settings.google_credentials_path,
             settings.google_token_path,
-            open_browser=True,
+            open_browser=open_browser,
             oauth_browser=oauth_browser,
         )
 
