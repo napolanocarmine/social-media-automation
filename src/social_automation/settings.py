@@ -545,15 +545,25 @@ def load_settings() -> Settings:
 
     s = Settings()
     updates: dict = {}
-    env_db = (os.environ.get("DATABASE_URL") or os.environ.get("TEST_DATABASE_URL") or "").strip()
+    from social_automation.env import resolve_database_url_from_env
+
+    on_vercel = bool(os.environ.get("VERCEL"))
+    env_db = resolve_database_url_from_env()
     if env_db and not (s.database_url or "").strip():
         updates["database_url"] = env_db
     env_backend = (os.environ.get("DB_BACKEND") or "").strip().lower()
     if env_backend:
         updates["db_backend"] = env_backend
-    elif (updates.get("database_url") or s.database_url or env_db):
+    elif (updates.get("database_url") or s.database_url or env_db) or on_vercel:
         if (s.db_backend or "sqlite").strip().lower() == "sqlite":
             updates["db_backend"] = "postgres"
+    if on_vercel:
+        updates["db_backend"] = "postgres"
+        env_storage = (os.environ.get("STORAGE_BACKEND") or "").strip().lower()
+        if env_storage:
+            updates["storage_backend"] = env_storage
+        elif (s.storage_backend or "local").strip().lower() == "local":
+            updates["storage_backend"] = "vercel_blob"
     if not (s.blob_read_write_token or "").strip():
         env_blob = (os.environ.get("BLOB_READ_WRITE_TOKEN") or "").strip()
         if env_blob:

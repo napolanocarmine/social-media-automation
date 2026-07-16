@@ -8,6 +8,7 @@ class HealthResponse(BaseModel):
     service: str = "social-media-automation-api"
     db_ok: bool | None = None
     db_backend: str | None = None
+    db_error: str | None = None
 
 
 class DashboardStatsResponse(BaseModel):

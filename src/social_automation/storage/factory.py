@@ -8,8 +8,14 @@ from social_automation.storage.local_store import LocalStorage
 
 
 def get_storage(settings: Settings | None = None):
+    import os
+
     s = settings or load_settings()
     backend = (s.storage_backend or "local").strip().lower()
+    if os.environ.get("VERCEL") and backend == "local":
+        raise RuntimeError(
+            "Su Vercel serve STORAGE_BACKEND=vercel_blob (integrazione Blob)."
+        )
     if backend in {"vercel_blob", "blob"}:
         return BlobStorage(s)
     return LocalStorage(s)

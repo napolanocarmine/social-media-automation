@@ -29,9 +29,13 @@ def set_database_url(url: str) -> None:
 def _get_database_url() -> str:
     global _database_url
     if _database_url is None:
-        url = (os.environ.get("DATABASE_URL") or os.environ.get("TEST_DATABASE_URL") or "").strip()
+        from social_automation.env import resolve_database_url_from_env
+
+        url = resolve_database_url_from_env()
         if not url:
-            raise RuntimeError("DATABASE_URL o TEST_DATABASE_URL non configurato")
+            raise RuntimeError(
+                "DATABASE_URL non configurato (o variante Neon tipo NEON_DB_DATABASE_URL)"
+            )
         _database_url = url
     return _database_url
 
