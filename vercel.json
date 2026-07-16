@@ -16,6 +16,7 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 300,
+      "includeFiles": "src/**,config/**",
       "excludeFiles": "{frontend/**,tests/**,docs/**,scripts/**,models/**,**/googleapiclient/discovery_cache/**,**/node_modules/**}"
     }
   },
