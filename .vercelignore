@@ -1,5 +1,4 @@
-# Keep Python function bundles small (no static analysis — all files are included by default).
-frontend/
+# Keep deploy uploads lean; Python function bundling uses vercel.json excludeFiles.
 tests/
 docs/
 scripts/
@@ -12,3 +11,4 @@ models/
 **/__pycache__/
 **/*.pyc
 **/.DS_Store
+frontend/node_modules/
