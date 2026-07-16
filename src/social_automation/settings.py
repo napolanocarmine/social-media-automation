@@ -505,6 +505,10 @@ class Settings(BaseSettings):
         default="",
         description="Token Vercel Blob (BLOB_READ_WRITE_TOKEN)",
     )
+    blob_access: str = Field(
+        default="public",
+        description="Accesso blob: public | private (x-vercel-blob-access)",
+    )
 
     google_credentials_json: str = Field(
         default="",
@@ -565,7 +569,9 @@ def load_settings() -> Settings:
         elif (s.storage_backend or "local").strip().lower() == "local":
             updates["storage_backend"] = "vercel_blob"
     if not (s.blob_read_write_token or "").strip():
-        env_blob = (os.environ.get("BLOB_READ_WRITE_TOKEN") or "").strip()
+        from social_automation.env import resolve_blob_read_write_token_from_env
+
+        env_blob = resolve_blob_read_write_token_from_env()
         if env_blob:
             updates["blob_read_write_token"] = env_blob
     if not (s.cron_secret or "").strip():

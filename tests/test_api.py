@@ -9,10 +9,11 @@ def test_health_v1() -> None:
     client = TestClient(create_app())
     response = client.get("/api/v1/health")
     assert response.status_code == 200
-    assert response.json() == {
-        "status": "ok",
-        "service": "social-media-automation-api",
-    }
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert payload["service"] == "social-media-automation-api"
+    assert "storage_backend" in payload
+    assert "blob_configured" in payload
 
 
 def test_health_legacy_alias() -> None:

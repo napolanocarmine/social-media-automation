@@ -9,6 +9,9 @@ class HealthResponse(BaseModel):
     db_ok: bool | None = None
     db_backend: str | None = None
     db_error: str | None = None
+    storage_backend: str | None = None
+    blob_configured: bool | None = None
+    blob_auth_mode: str | None = None
 
 
 class DashboardStatsResponse(BaseModel):
