@@ -26,10 +26,35 @@ def _blob_thumb_key(file_id: str, mime_type: str) -> str:
 
 
 def _use_blob_cache(settings: Settings) -> bool:
-    if os.environ.get("VERCEL"):
-        return True
     backend = (settings.storage_backend or "local").strip().lower()
     return backend in {"vercel_blob", "blob"}
+
+
+def _blob_cache_available(settings: Settings) -> bool:
+    if not _use_blob_cache(settings):
+        return False
+    from social_automation.storage.blob_store import BlobStorage
+
+    return BlobStorage.is_configured(settings)
+
+
+def _download_from_drive(
+    settings: Settings,
+    *,
+    file_id: str,
+    mime_type: str,
+    open_browser: bool,
+) -> tuple[bytes, str] | None:
+    mime = (mime_type or "image/jpeg").strip() or "image/jpeg"
+    ext = mimetypes.guess_extension(mime) or ".jpg"
+    drive_client = DriveClient.from_settings(settings, open_browser=open_browser)
+    try:
+        raw = drive_client.download_file_bytes(file_id)
+        data = _normalize_bytes(raw, suffix=ext)
+        return data, mime
+    except Exception as exc:
+        _LOG.warning("Download thumbnail Drive fallito (%s): %s", file_id, exc)
+        return None
 
 
 def _normalize_bytes(data: bytes, *, suffix: str) -> bytes:
@@ -48,7 +73,7 @@ def _normalize_bytes(data: bytes, *, suffix: str) -> bytes:
 
 
 def clear_drive_thumb_cache(settings: Settings) -> None:
-    if _use_blob_cache(settings):
+    if _blob_cache_available(settings):
         return
     exif_dir = settings.output_dir / "drive_cache" / "exif"
     if not exif_dir.is_dir():
@@ -70,33 +95,49 @@ def get_drive_thumbnail_bytes(
 ) -> tuple[bytes, str] | None:
     """Scarica anteprima Drive (con cache). Restituisce (bytes, content_type)."""
     mime = (mime_type or "image/jpeg").strip() or "image/jpeg"
-    ext = mimetypes.guess_extension(mime) or ".jpg"
 
-    if _use_blob_cache(settings):
+    if _blob_cache_available(settings):
         from social_automation.storage.factory import get_storage
 
         try:
             storage = get_storage(settings)
         except Exception as exc:
             _LOG.warning("Blob storage non disponibile per thumbnail: %s", exc)
-            return None
-        key = _blob_thumb_key(file_id, mime)
-        try:
-            existing = storage.exists(key)
-            if existing:
-                return storage.download(existing), mime
-        except Exception as exc:
-            _LOG.warning("Lettura cache blob thumbnail fallita (%s): %s", key, exc)
+        else:
+            key = _blob_thumb_key(file_id, mime)
+            try:
+                existing = storage.exists(key)
+                if existing:
+                    return storage.download(existing), mime
+            except Exception as exc:
+                _LOG.warning("Lettura cache blob thumbnail fallita (%s): %s", key, exc)
 
-        drive_client = DriveClient.from_settings(settings, open_browser=open_browser)
-        try:
-            raw = drive_client.download_file_bytes(file_id)
-            data = _normalize_bytes(raw, suffix=ext)
-            storage.upload(key, data, content_type=mime)
-            return data, mime
-        except Exception as exc:
-            _LOG.warning("Download thumbnail Drive fallito (%s): %s", file_id, exc)
-            return None
+            result = _download_from_drive(
+                settings,
+                file_id=file_id,
+                mime_type=mime,
+                open_browser=open_browser,
+            )
+            if result is None:
+                return None
+            data, content_type = result
+            try:
+                storage.upload(key, data, content_type=content_type)
+            except Exception as exc:
+                _LOG.warning("Scrittura cache blob thumbnail fallita (%s): %s", key, exc)
+            return data, content_type
+
+    if _use_blob_cache(settings) and os.environ.get("VERCEL"):
+        _LOG.info(
+            "Blob non configurato su Vercel: anteprima servita da Drive senza cache (%s)",
+            file_id,
+        )
+        return _download_from_drive(
+            settings,
+            file_id=file_id,
+            mime_type=mime,
+            open_browser=open_browser,
+        )
 
     cache_path = drive_cache_path(settings, file_id, mime)
     if cache_path.is_file():
