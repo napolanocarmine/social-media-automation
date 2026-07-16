@@ -21,6 +21,12 @@ _LOG = logging.getLogger(__name__)
 _database_url: str | None = None
 
 
+def _scalar_row(row: dict[str, Any] | None) -> Any:
+    if row is None:
+        return None
+    return next(iter(row.values()))
+
+
 def set_database_url(url: str) -> None:
     global _database_url
     _database_url = url.strip()
@@ -139,7 +145,7 @@ def record_render_artifacts(
         flag_col = _IMAGE_RENDER_FLAG_BY_KEY.get((platform, media_format_value))
         if flag_col:
             conn.execute(
-                f"UPDATE images SET {flag_col} = 1, updated_at = NOW() WHERE id = %s",
+                f"UPDATE images SET {flag_col} = TRUE, updated_at = NOW() WHERE id = %s",
                 (image_id,),
             )
 
@@ -247,7 +253,7 @@ def record_processed_artifacts(
         flag_col = _IMAGE_RENDER_FLAG_BY_KEY.get((platform, media_format_value))
         if flag_col:
             conn.execute(
-                f"UPDATE images SET {flag_col} = 1, updated_at = NOW() WHERE id = %s",
+                f"UPDATE images SET {flag_col} = TRUE, updated_at = NOW() WHERE id = %s",
                 (image_id,),
             )
 
@@ -484,9 +490,9 @@ def list_ai_output_images(
     if filt == "pending":
         sql += " AND i.is_valid_for_publication IS NULL"
     elif filt == "approved":
-        sql += " AND i.is_valid_for_publication = 1"
+        sql += " AND i.is_valid_for_publication IS TRUE"
     elif filt == "rejected":
-        sql += " AND i.is_valid_for_publication = 0"
+        sql += " AND i.is_valid_for_publication IS FALSE"
     sql += " ORDER BY i.id DESC LIMIT %s OFFSET %s"
     params.extend([lim, off])
     with _connect(db_path) as conn:
@@ -509,12 +515,12 @@ def count_ai_output_images(
     if filt == "pending":
         sql += " AND i.is_valid_for_publication IS NULL"
     elif filt == "approved":
-        sql += " AND i.is_valid_for_publication = 1"
+        sql += " AND i.is_valid_for_publication IS TRUE"
     elif filt == "rejected":
-        sql += " AND i.is_valid_for_publication = 0"
+        sql += " AND i.is_valid_for_publication IS FALSE"
     with _connect(db_path) as conn:
         row = conn.execute(sql, tuple(params)).fetchone()
-    return int(row[0]) if row else 0
+    return int(_scalar_row(row) or 0) if row else 0
 
 
 def count_running_batches(db_path: Path) -> int:
@@ -523,7 +529,7 @@ def count_running_batches(db_path: Path) -> int:
         row = conn.execute(
             "SELECT COUNT(*) FROM batches WHERE status = 'running'"
         ).fetchone()
-    return int(row[0]) if row else 0
+    return int(_scalar_row(row) or 0) if row else 0
 
 
 def backfill_image_quality_evaluations(
@@ -869,12 +875,12 @@ def _plannable_images_sql_filters(
     params: list[Any] = []
     if fmt == MediaFormat.STORY.value:
         # Stesso asset story per IG e FB (cartella ``stories/`` condivisa).
-        sql += " AND (render_ig_story = 1 OR render_fb_story = 1)"
+        sql += " AND (render_ig_story IS TRUE OR render_fb_story IS TRUE)"
     else:
         if platform == Platform.INSTAGRAM:
-            sql += " AND render_ig = 1"
+            sql += " AND render_ig IS TRUE"
         elif platform == Platform.FACEBOOK:
-            sql += " AND render_fb = 1"
+            sql += " AND render_fb IS TRUE"
     category = (business_category or "").strip().lower()
     if category:
         sql += (
@@ -886,9 +892,9 @@ def _plannable_images_sql_filters(
         )
         params.append(category)
     if require_quality_pass:
-        sql += " AND is_valid_by_quality_evaluation = 1"
+        sql += " AND is_valid_by_quality_evaluation IS TRUE"
     if require_manual_publication_valid:
-        sql += " AND is_valid_for_publication = 1"
+        sql += " AND is_valid_for_publication IS TRUE"
     return sql, params
 
 
@@ -914,7 +920,7 @@ def count_plannable_images(
     sql = f"SELECT COUNT(*) FROM images WHERE 1=1{frag}"
     with _connect(db_path) as conn:
         row = conn.execute(sql, tuple(params)).fetchone()
-    return int(row[0]) if row is not None else 0
+    return int(_scalar_row(row) or 0) if row is not None else 0
 
 
 def list_plannable_image_ids(
@@ -1060,7 +1066,7 @@ def set_image_manual_publication_valid(
                 SET is_valid_for_publication = %s, updated_at = NOW()
                 WHERE id = %s
                 """,
-                (int(value), iid),
+                (bool(int(value)), iid),
             )
 
 
@@ -1091,7 +1097,7 @@ def count_images_for_manual_publication_review(
     sql = f"SELECT COUNT(*) FROM images WHERE 1=1{frag}"
     with _connect(db_path) as conn:
         row = conn.execute(sql, tuple(params)).fetchone()
-    return int(row[0]) if row is not None else 0
+    return int(_scalar_row(row) or 0) if row is not None else 0
 
 
 def list_images_for_manual_publication_review(
@@ -1301,7 +1307,7 @@ def list_story_schedule_rules(
     """
     params: list[Any] = []
     if active_only:
-        sql += " WHERE r.active = 1"
+        sql += " WHERE r.active IS TRUE"
     sql += " ORDER BY r.id DESC LIMIT %s"
     params.append(max_rows)
     with _connect(db_path) as conn:
