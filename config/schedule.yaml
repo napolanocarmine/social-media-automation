@@ -1,0 +1,19 @@
+# Esempio: slot fissi per pubblicazione (IG/FB).
+# Adatta giorni e orari al tuo calendario editoriale.
+# timezone: IANA, es. Europe/Rome
+
+timezone: Europe/Rome
+
+slots:
+  - platforms: [instagram, facebook]
+    weekday: monday
+    time: "12:30"
+    category: food
+  - platforms: [instagram]
+    weekday: wednesday
+    time: "18:00"
+    category: beer
+  - platforms: [facebook]
+    weekday: friday
+    time: "10:00"
+    category: locale

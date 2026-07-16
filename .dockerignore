@@ -1,0 +1,35 @@
+# Python / venv
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Git / IDE
+.git/
+.gitignore
+.idea/
+.vscode/
+.DS_Store
+
+# Segreti e stato locale (montati come volumi a runtime)
+.env
+credentials.json
+token.json
+canva_token.json
+*.pem
+output/
+
+# Frontend (buildato nello stage node del Dockerfile)
+frontend/node_modules/
+frontend/dist/
+
+# Documentazione e CI non necessari nell'immagine
+docs/
+tests/
+agent-transcripts/

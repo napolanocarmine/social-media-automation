@@ -1,0 +1,12 @@
+# Impostazioni Streamlit per esecuzione in container (headless).
+[server]
+headless = true
+address = "0.0.0.0"
+port = 8501
+enableCORS = false
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
+serverAddress = "localhost"
+serverPort = 8501

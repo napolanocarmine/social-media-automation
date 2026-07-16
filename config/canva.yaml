@@ -1,0 +1,31 @@
+# Design-base Canva (ID = primo segmento dopo /design/ nell'URL).
+# IG post:    https://www.canva.com/design/DAHI_64VCbc/...
+# FB post:    https://www.canva.com/design/DAHI_2U_X-4/...
+# Story (IG/FB, condiviso): https://www.canva.com/design/DAHJFJux4-8/...
+
+templates:
+  instagram:
+    default_template_id: "DAHI_64VCbc"
+  facebook:
+    default_template_id: "DAHI_2U_X-4"
+  # Le storie usano lo stesso template per IG e FB (formato verticale 9:16).
+  story:
+    default_template_id: "DAHJFJux4-8"
+
+category_template_overrides:
+  boss:
+    instagram: ""
+    facebook: ""
+    story: ""
+  birra:
+    instagram: ""
+    facebook: ""
+    story: ""
+  food:
+    instagram: ""
+    facebook: ""
+    story: ""
+  locale:
+    instagram: ""
+    facebook: ""
+    story: ""

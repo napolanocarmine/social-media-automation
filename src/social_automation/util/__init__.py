@@ -1,0 +1,1 @@
+"""Utility condivise (retry, ecc.)."""

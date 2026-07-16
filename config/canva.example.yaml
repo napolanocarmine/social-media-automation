@@ -1,0 +1,28 @@
+# Esempio: ID = primo segmento dopo /design/ nell'URL Canva.
+# La chiave `story` e' opzionale e condivisa tra IG/FB (formato verticale 9:16).
+
+templates:
+  instagram:
+    default_template_id: ""
+  facebook:
+    default_template_id: ""
+  story:
+    default_template_id: ""
+
+category_template_overrides:
+  boss:
+    instagram: ""
+    facebook: ""
+    story: ""
+  birra:
+    instagram: ""
+    facebook: ""
+    story: ""
+  food:
+    instagram: ""
+    facebook: ""
+    story: ""
+  locale:
+    instagram: ""
+    facebook: ""
+    story: ""

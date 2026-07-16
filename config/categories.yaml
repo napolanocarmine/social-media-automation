@@ -1,0 +1,15 @@
+# Struttura cartelle Drive: anno/mese/categoria (es. 2026/Marzo/food)
+# Inserisci l'ID della cartella root (da URL Drive .../folders/<ID>)
+drive_root_folder_id: "1HaPu4D3fEUaEjBiGfxQKabwl_QcY-7U8"
+
+raw_categories:
+  - food
+  - beer
+  - peppe
+  - locale
+
+category_aliases:
+  food: food
+  beer: birra
+  peppe: boss
+  locale: locale

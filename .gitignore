@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+.env
+*.egg-info/
+dist/
+build/
+
+# Credentials & secrets
+credentials.json
+canva_token.json
+token.json
+token.json.bak
+output/
+.venv/
+token.json
+canva_token.json
+*.pem
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Runtime / local state
+data/
+output/
+frontend/node_modules/
+frontend/dist/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/

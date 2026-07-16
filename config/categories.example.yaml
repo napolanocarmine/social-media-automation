@@ -1,0 +1,17 @@
+# Struttura cartelle consigliata: anno/mese/categoria
+# esempio: 2026/Marzo/food,beer,peppe,locale
+#
+# Root Drive (ID da URL .../folders/<ID>): usata se non passi --folder-id e non hai GOOGLE_DRIVE_FOLDER_ID nel .env
+drive_root_folder_id: ""
+
+raw_categories:
+  - food
+  - beer
+  - peppe
+  - locale
+
+category_aliases:
+  food: food
+  beer: birra
+  peppe: boss
+  locale: locale

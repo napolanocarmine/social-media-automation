@@ -1,0 +1,39 @@
+name: Test
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_USER: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Python deps
+        run: pip install -e ".[dev,api]" -r requirements.txt
+      - name: Apply Postgres schema
+        run: psql postgresql://postgres:test@localhost:5432/test -f docs/sql/001_initial_schema.sql
+        env:
+          PGPASSWORD: test
+      - name: Run pytest (sqlite)
+        run: pytest -q --ignore=tests/test_db_store.py
+      - name: Run pytest (postgres)
+        run: pytest -q tests/test_db_store.py
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:test@localhost:5432/test
+          DB_BACKEND: postgres

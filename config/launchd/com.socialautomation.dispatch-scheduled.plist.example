@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.socialautomation.dispatch-scheduled</string>
+
+    <key>WorkingDirectory</key>
+    <string>__PROJECT_ROOT__</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/zsh</string>
+      <string>__PROJECT_ROOT__/scripts/dispatch_scheduled.sh</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PYTHON_BIN</key>
+      <string>__PYTHON_BIN__</string>
+      <key>DISPATCH_LIMIT</key>
+      <string>100</string>
+      <key>DISPATCH_PLATFORM</key>
+      <string></string>
+    </dict>
+
+    <key>StartInterval</key>
+    <integer>600</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>__PROJECT_ROOT__/output/logs/launchd-dispatch.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__PROJECT_ROOT__/output/logs/launchd-dispatch.err.log</string>
+  </dict>
+</plist>

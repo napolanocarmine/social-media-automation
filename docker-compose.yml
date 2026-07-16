@@ -1,0 +1,101 @@
+# Avvio: docker compose up -d
+# Web UI: http://localhost:8080  (nginx → React + proxy /api → api:8000)
+#
+# Streamlit legacy (opzionale): docker compose --profile streamlit up -d ui-legacy
+#
+# Prerequisito: OAuth e token creati sul host (o montati), vedi docs/docker.md
+
+services:
+  api:
+    build:
+      context: .
+      target: api
+    image: social-media-automation:local
+    container_name: social-automation-api
+    command: ["api"]
+    expose:
+      - "8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SOCIAL_AUTOMATION_ROOT: /app
+      GOOGLE_OAUTH_BROWSER: ""
+      TZ: Europe/Rome
+      APP_TIMEZONE: Europe/Rome
+      API_PORT: "8000"
+    volumes: &app_volumes
+      - ./output:/app/output
+      - ./config:/app/config
+      - ./models:/app/models:ro
+      - ./credentials.json:/app/credentials.json:ro
+      - ./token.json:/app/token.json
+      - ./canva_token.json:/app/canva_token.json
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      target: web
+    image: social-media-automation-web:local
+    container_name: social-automation-web
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  scheduler:
+    image: social-media-automation:local
+    container_name: social-automation-scheduler
+    command: ["scheduler"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SOCIAL_AUTOMATION_ROOT: /app
+      GOOGLE_OAUTH_BROWSER: ""
+      TZ: Europe/Rome
+      APP_TIMEZONE: Europe/Rome
+      DISPATCH_INTERVAL_SECONDS: "${DISPATCH_INTERVAL_SECONDS:-600}"
+      DISPATCH_LIMIT: "${DISPATCH_LIMIT:-100}"
+      DISPATCH_PLATFORM: "${DISPATCH_PLATFORM:-}"
+    volumes: *app_volumes
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  ui-legacy:
+    profiles: ["streamlit"]
+    image: social-media-automation:local
+    container_name: social-automation-ui-legacy
+    command: ["ui"]
+    ports:
+      - "${STREAMLIT_PORT:-8501}:8501"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SOCIAL_AUTOMATION_ROOT: /app
+      GOOGLE_OAUTH_BROWSER: ""
+      TZ: Europe/Rome
+      APP_TIMEZONE: Europe/Rome
+    volumes: *app_volumes
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  # Uso: docker compose run --rm cli prepare-week --dry-run
+  cli:
+    profiles: ["cli"]
+    image: social-media-automation:local
+    entrypoint: ["/app/docker/entrypoint.sh", "cli"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SOCIAL_AUTOMATION_ROOT: /app
+      GOOGLE_OAUTH_BROWSER: ""
+      TZ: Europe/Rome
+      APP_TIMEZONE: Europe/Rome
+    volumes: *app_volumes
