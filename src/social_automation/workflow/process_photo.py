@@ -18,16 +18,19 @@ from social_automation.db.store import (
     latest_metadata_for_image,
     record_processed_artifacts,
     set_image_manual_publication_valid,
-    update_image_copy_json,
     update_image_visual_state,
     update_vision_eval,
 )
 from social_automation.drive.client import DriveClient
 from social_automation.drive.selection import normalize_business_category
 from social_automation.models import DriveAsset, MediaFormat, Platform
-from social_automation.processing.image_adjust import apply_retouch_to_file, crop_mode_for_platform
-from social_automation.settings import Settings, load_settings
+from social_automation.processing.image_adjust import (
+    apply_retouch_to_file,
+    crop_mode_for_platform,
+    normalize_image_file,
+)
 from social_automation.services.media import maybe_persist_processed_media_to_blob
+from social_automation.settings import Settings, load_settings
 from social_automation.visual.models import VisualProductionResult
 from social_automation.visual.producer import produce_final_asset
 from social_automation.workflow.render import pick_latest_unrendered_asset
@@ -380,7 +383,8 @@ def revert_image_to_original(
     platform = Platform(platform_raw)
 
     fmt_raw = str(meta.get("media_format") or MediaFormat.POST.value).strip().lower()
-    media_format = MediaFormat(fmt_raw if fmt_raw in {MediaFormat.POST.value, MediaFormat.STORY.value} else MediaFormat.POST.value)
+    allowed_formats = {MediaFormat.POST.value, MediaFormat.STORY.value}
+    media_format = MediaFormat(fmt_raw if fmt_raw in allowed_formats else MediaFormat.POST.value)
 
     dest = Path(str(row.get("path") or ""))
     if not dest.parent:

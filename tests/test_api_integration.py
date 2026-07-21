@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
 from fastapi.testclient import TestClient
 
 from social_automation.api.deps import get_db_path, get_settings
 from social_automation.api.main import create_app
 from social_automation.db.store import create_batch, get_batch
 from social_automation.models import MediaFormat, Platform
-from social_automation.services.batches import get_active_running_batch, reconcile_stale_running_batches
+from social_automation.services.batches import (
+    get_active_running_batch,
+    reconcile_stale_running_batches,
+)
 from social_automation.settings import Settings
 
 

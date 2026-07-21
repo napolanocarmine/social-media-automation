@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 from PIL import Image
@@ -10,7 +9,10 @@ from social_automation.models import MediaFormat, Platform
 from social_automation.settings import Settings
 from social_automation.visual import producer as vp
 from social_automation.visual.models import ImageEditApiResult, ImageEditPlan
-from social_automation.visual.prompts import build_image_edit_user_prompt, format_edit_plan_for_prompt
+from social_automation.visual.prompts import (
+    build_image_edit_user_prompt,
+    format_edit_plan_for_prompt,
+)
 
 
 def _write_test_jpeg(path: Path) -> None:

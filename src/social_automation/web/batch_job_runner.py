@@ -9,8 +9,8 @@ from social_automation.db.store import (
     update_batch_progress,
 )
 from social_automation.models import MediaFormat, Platform
-from social_automation.settings import load_settings
 from social_automation.services.process_photo import run_process_photo
+from social_automation.settings import load_settings
 
 
 def run_batch_job(

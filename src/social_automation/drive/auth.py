@@ -12,7 +12,7 @@ from typing import Any
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import Flow, InstalledAppFlow
+from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 SCOPES = ("https://www.googleapis.com/auth/drive.readonly",)

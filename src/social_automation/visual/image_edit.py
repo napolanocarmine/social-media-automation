@@ -7,6 +7,8 @@ from pathlib import Path
 from social_automation.settings import Settings
 from social_automation.visual.image_generation import (
     edit_image_with_prompt,
+)
+from social_automation.visual.image_generation import (
     image_edit_configured as images_api_configured,
 )
 from social_automation.visual.models import ImageEditApiResult

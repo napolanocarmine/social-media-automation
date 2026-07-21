@@ -4,9 +4,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from social_automation.brand.loader import build_system_message, load_story_agent_config, pillar_for_category
+from social_automation.brand.loader import (
+    build_system_message,
+    load_story_agent_config,
+    pillar_for_category,
+)
 from social_automation.brand.openai_json import api_configured, chat_vision_json
-from social_automation.brand.prompt_context import channels_label, image_edit_format_label, normalize_channels
+from social_automation.brand.prompt_context import (
+    channels_label,
+    image_edit_format_label,
+    normalize_channels,
+)
 from social_automation.models import MediaFormat, Platform
 from social_automation.settings import Settings
 from social_automation.visual.models import ImageEditPlan

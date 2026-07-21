@@ -113,7 +113,7 @@ class _OAuthHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.end_headers()
         self.wfile.write(
-            f"<!DOCTYPE html><html><body><p>{body}</p></body></html>".encode("utf-8")
+            f"<!DOCTYPE html><html><body><p>{body}</p></body></html>".encode()
         )
 
 

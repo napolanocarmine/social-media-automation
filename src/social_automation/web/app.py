@@ -571,7 +571,7 @@ def _drive_cache_path(settings: Any, file_id: str, mime_type: str) -> Path:
 def _clear_legacy_drive_cache(settings: Any) -> None:
     """Rimuove anteprime cache senza correzione EXIF (path legacy)."""
     legacy_dir = settings.output_dir / "drive_cache"
-    exif_dir = legacy_dir / "exif"
+    legacy_dir / "exif"
     if not legacy_dir.is_dir():
         return
     for entry in legacy_dir.iterdir():
@@ -1440,9 +1440,9 @@ def _render_manual_publication_approval_page(settings_db_path: Path) -> None:
 
     for row in rows:
         image_id = int(row["id"])
-        image_name = str(row.get("name", "")).strip() or f"Immagine {image_id}"
+        str(row.get("name", "")).strip() or f"Immagine {image_id}"
         image_path = Path(str(row.get("path", "")))
-        manual = row.get("is_valid_for_publication")
+        row.get("is_valid_for_publication")
         meta = latest_metadata_for_image(settings_db_path, image_id=image_id)
         source_file = str((meta or {}).get("source_file") or "")
 

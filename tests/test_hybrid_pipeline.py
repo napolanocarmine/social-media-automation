@@ -7,9 +7,12 @@ from PIL import Image
 from social_automation.models import MediaFormat, Platform
 from social_automation.processing.image_adjust import apply_tone_to_file
 from social_automation.settings import Settings
-from social_automation.visual.models import ImageEditPlan, LightAdjustments
-from social_automation.visual.prompts import build_image_edit_user_prompt, format_edit_plan_for_prompt
 from social_automation.visual import producer as vp
+from social_automation.visual.models import ImageEditPlan, LightAdjustments
+from social_automation.visual.prompts import (
+    build_image_edit_user_prompt,
+    format_edit_plan_for_prompt,
+)
 
 
 def test_light_adjustments_from_dict() -> None:

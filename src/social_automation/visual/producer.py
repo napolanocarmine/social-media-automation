@@ -17,9 +17,16 @@ from social_automation.processing.image_adjust import (
     crop_mode_for_platform,
 )
 from social_automation.settings import Settings
-from social_automation.visual.image_edit import image_edit_configured, run_image_edit
 from social_automation.visual.edit_plan import run_image_edit_plan
-from social_automation.visual.models import ImageEditApiResult, ImageEditPlan, LightAdjustments, VisualDecision, VisualProductionResult, VisualReview
+from social_automation.visual.image_edit import image_edit_configured, run_image_edit
+from social_automation.visual.models import (
+    ImageEditApiResult,
+    ImageEditPlan,
+    LightAdjustments,
+    VisualDecision,
+    VisualProductionResult,
+    VisualReview,
+)
 from social_automation.visual.postprocess import (
     copy_or_finalize_for_crop_mode,
     precrop_source_for_api,

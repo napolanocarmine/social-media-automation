@@ -7,10 +7,13 @@ import os
 from fastapi import APIRouter, Header, HTTPException, Query
 
 from social_automation.api.deps import SettingsDep
-from social_automation.app_timezone import app_timezone_name, is_within_dispatch_cron_window, now_app
+from social_automation.app_timezone import (
+    app_timezone_name,
+    is_within_dispatch_cron_window,
+    now_app,
+)
 from social_automation.services.batch_queue import process_next_batch_item
 from social_automation.services.dispatch import run_dispatch
-from social_automation.settings import load_settings
 
 router = APIRouter(prefix="/cron", tags=["cron"])
 

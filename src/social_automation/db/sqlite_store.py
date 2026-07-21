@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from social_automation.models import MediaFormat, Platform
 from social_automation.app_timezone import query_datetime_utc, scheduled_for_db_iso
+from social_automation.models import MediaFormat, Platform
 
 _LOG = logging.getLogger(__name__)
 

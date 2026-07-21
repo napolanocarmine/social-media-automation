@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -49,16 +49,16 @@ def test_collect_weekly_friday_after_slot(tmp_path: Path) -> None:
         time_local="09:00",
         detail='{"caption": "ciao"}',
     )
-    fri = datetime(2026, 5, 15, 10, 0, 0, tzinfo=ZoneInfo("Europe/Rome")).astimezone(timezone.utc)
+    fri = datetime(2026, 5, 15, 10, 0, 0, tzinfo=ZoneInfo("Europe/Rome")).astimezone(UTC)
     due = collect_due_story_rules(db_path, now=fri, limit=10)
     assert len(due) == 1
     assert due[0]["schedule_mode"] == "weekly"
     assert due[0]["caption"] == "ciao"
 
-    thu = datetime(2026, 5, 14, 10, 0, 0, tzinfo=ZoneInfo("Europe/Rome")).astimezone(timezone.utc)
+    thu = datetime(2026, 5, 14, 10, 0, 0, tzinfo=ZoneInfo("Europe/Rome")).astimezone(UTC)
     assert collect_due_story_rules(db_path, now=thu, limit=10) == []
 
-    fri_before = datetime(2026, 5, 15, 8, 0, 0, tzinfo=ZoneInfo("Europe/Rome")).astimezone(timezone.utc)
+    fri_before = datetime(2026, 5, 15, 8, 0, 0, tzinfo=ZoneInfo("Europe/Rome")).astimezone(UTC)
     assert collect_due_story_rules(db_path, now=fri_before, limit=10) == []
 
 
@@ -94,7 +94,7 @@ def test_collect_weekly_skips_if_occurrence_exists(tmp_path: Path) -> None:
     dkey = "2026-05-15"
     assert reserve_story_occurrence_slot(db_path, rule_id=rid, occurrence_date=dkey)
     assert story_occurrence_exists(db_path, rule_id=rid, occurrence_date=dkey)
-    fri = datetime(2026, 5, 15, 10, 0, 0, tzinfo=ZoneInfo("Europe/Rome")).astimezone(timezone.utc)
+    fri = datetime(2026, 5, 15, 10, 0, 0, tzinfo=ZoneInfo("Europe/Rome")).astimezone(UTC)
     assert collect_due_story_rules(db_path, now=fri, limit=10) == []
 
 
@@ -127,7 +127,7 @@ def test_collect_once_past(tmp_path: Path) -> None:
         timezone_name="Europe/Rome",
         scheduled_for=when,
     )
-    now = datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 1, 1, 0, 0, tzinfo=UTC)
     due = collect_due_story_rules(db_path, now=now, limit=10)
     assert len(due) == 1
     assert due[0]["schedule_mode"] == "once"

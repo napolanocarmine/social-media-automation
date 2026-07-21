@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-from social_automation.settings import Settings, load_settings, repo_root
+from social_automation.settings import load_settings, repo_root
 
 _DEFAULT_SYSTEM = Path("config/brand/story_system.md")
 _DEFAULT_BUSINESS_RULES = Path("config/brand/story_business_rules.md")

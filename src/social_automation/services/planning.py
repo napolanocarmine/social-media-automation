@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, time
+from datetime import date, time
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from social_automation.app_timezone import app_timezone_name, combine_app, now_app
+from social_automation.app_timezone import app_timezone_name, combine_app
 from social_automation.brand.copy_pack import caption_for_platform, planning_detail_with_caption
-from social_automation.brand.prompt_context import normalize_channels, normalize_marketing_objectives
+from social_automation.brand.prompt_context import (
+    normalize_channels,
+    normalize_marketing_objectives,
+)
 from social_automation.config_loaders import load_schedule_yaml, resolve_schedule_path
 from social_automation.db.store import (
     add_planning_event,

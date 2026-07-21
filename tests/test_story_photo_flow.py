@@ -4,7 +4,11 @@ from pathlib import Path
 
 from PIL import Image
 
-from social_automation.brand.copy_pack import caption_for_platform, copy_approved, planning_detail_with_caption
+from social_automation.brand.copy_pack import (
+    caption_for_platform,
+    copy_approved,
+    planning_detail_with_caption,
+)
 from social_automation.models import MediaFormat, Platform
 from social_automation.processing.image_adjust import apply_adjustments, crop_mode_for_platform
 

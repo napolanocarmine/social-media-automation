@@ -6,7 +6,6 @@ from typing import Any
 
 from social_automation.image_quality_onnx import quality_gate_configured
 from social_automation.settings import Settings
-from social_automation.validation.image_gate import vision_validation_configured
 
 
 def dispatch_gates_active(settings: Settings) -> dict[str, bool]:

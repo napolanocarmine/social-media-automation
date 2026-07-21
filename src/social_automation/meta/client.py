@@ -152,9 +152,10 @@ class MetaClient:
         *,
         publish_at: datetime,
     ) -> str:
-        """Programma un post foto sulla Page via ``/feed`` + ``attached_media`` (flusso Meta per Planner / Business Suite).
+        """Programma un post foto sulla Page via ``/feed`` + ``attached_media``.
 
-        Non usa ``/photos`` con ``scheduled_publish_time`` da solo: quel percorso spesso non compare
+        Flusso Meta per Planner / Business Suite. Non usa ``/photos`` con
+        ``scheduled_publish_time`` da solo: quel percorso spesso non compare
         nel Planner di Business Suite. Sequenza: upload foto ``published=false`` + ``temporary=true``,
         poi ``POST /{page-id}/feed`` con ``unpublished_content_type=SCHEDULED`` e ``attached_media``.
         Restituisce l'id del **post** (``{page-id}_{post-id}``).

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, time
+from datetime import time
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -500,7 +500,6 @@ def _render_plan_step2(
                     else ((detail or "").strip() or cap_from_pack or image_name)
                 )
                 meta_fb_ok = 0
-                meta_fb_errors: list[str] = []
                 ig_note = False
                 meta_client: MetaClient | None = None
                 if settings_plan.meta_page_access_token.strip():

@@ -1,4 +1,3 @@
-from pathlib import Path
 
 from social_automation.settings import (
     default_meta_page_token_file,

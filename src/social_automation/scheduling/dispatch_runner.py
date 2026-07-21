@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import Any
 
 from social_automation.app_timezone import now_app, parse_iso_datetime
+from social_automation.brand.copy_pack import caption_for_platform
 from social_automation.db.store import add_planning_event, list_due_events
 from social_automation.meta.client import MetaClient
 from social_automation.models import MediaFormat, Platform, infer_media_format_from_render_path
-from social_automation.brand.copy_pack import caption_for_platform
 from social_automation.scheduling.dispatch_gates import check_image_dispatch_gates
 from social_automation.scheduling.story_rules_dispatch import run_story_rules_dispatch
 from social_automation.services.media import resolve_dispatch_image_path

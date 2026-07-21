@@ -3,7 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from social_automation.brand.copy_pack import caption_from_planning_detail, planning_detail_with_caption
+from social_automation.brand.copy_pack import (
+    caption_from_planning_detail,
+    planning_detail_with_caption,
+)
 from social_automation.db.store import (
     add_planning_event,
     ensure_db_schema,

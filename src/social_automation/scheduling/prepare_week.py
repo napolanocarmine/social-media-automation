@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from social_automation.app_timezone import now_app
-from social_automation.brand.copy_pack import caption_for_platform, copy_approved, planning_detail_with_caption
+from social_automation.brand.copy_pack import (
+    caption_for_platform,
+    copy_approved,
+    planning_detail_with_caption,
+)
 from social_automation.config_loaders import load_schedule_yaml
 from social_automation.db.store import (
     add_planning_event,

@@ -4,18 +4,18 @@ from __future__ import annotations
 
 import json
 import logging
-import os
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import psycopg
 from psycopg.rows import dict_row
 
-from social_automation.models import MediaFormat, Platform
 from social_automation.app_timezone import query_datetime_utc, scheduled_for_db_iso
+from social_automation.models import MediaFormat, Platform
 
 _LOG = logging.getLogger(__name__)
 _database_url: str | None = None

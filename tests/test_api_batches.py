@@ -59,7 +59,6 @@ def test_start_ai_batch_creates_running_batch(tmp_path) -> None:
 
 
 def test_active_batch_and_stop(tmp_path) -> None:
-    import os
 
     db_path = tmp_path / "db.sqlite3"
     settings = Settings(db_path=db_path, output_dir=tmp_path / "output")

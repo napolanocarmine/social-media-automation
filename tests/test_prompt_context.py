@@ -7,7 +7,6 @@ from social_automation.brand.prompt_context import (
     channels_label,
     copy_format_label,
     image_format_label,
-    normalize_channels,
 )
 from social_automation.models import MediaFormat, Platform
 

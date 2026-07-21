@@ -22,8 +22,8 @@ from social_automation.config_loaders import (
     load_categories_yaml,
     load_category_aliases,
     load_schedule_yaml,
-    resolve_schedule_path,
     resolve_drive_folder_id,
+    resolve_schedule_path,
 )
 from social_automation.db.store import (
     add_planning_event,
@@ -51,20 +51,19 @@ from social_automation.models import (
     DriveAsset,
     MediaFormat,
     Platform,
-    infer_media_format_from_render_path,
 )
 from social_automation.pipeline.runner import PipelineContext, PipelineRunner
-from social_automation.scheduling.story_rules_dispatch import collect_due_story_rules
 from social_automation.scheduling.dispatch_gates import check_image_dispatch_gates
 from social_automation.scheduling.dispatch_runner import run_dispatch_scheduled
 from social_automation.scheduling.prepare_week import prepare_week
-from social_automation.workflow.process_photo import process_drive_story_photo, process_local_photo
+from social_automation.scheduling.story_rules_dispatch import collect_due_story_rules
 from social_automation.settings import (
     default_meta_page_token_file,
     intended_meta_page_token_file_path,
     load_settings,
     resolve_meta_page_token_file_path,
 )
+from social_automation.workflow.process_photo import process_drive_story_photo, process_local_photo
 
 _DEFAULT_CATEGORIES_YAML = Path("config/categories.yaml")
 
