@@ -53,6 +53,21 @@ Autenticazione: header `Authorization: Bearer $CRON_SECRET` o query `?secret=`.
 | **Hobby** | [GitHub Actions](.github/workflows/cron-dispatch.yml) — gratis, rispetta DST |
 | **Pro** | `vercel.json` (`0 * * * *`) + guard orario in API |
 
+### Batch AI (Story AI / ritocco foto)
+
+Su Vercel la coda **non** si processa da sola al click «Avvia coda»: serve `/api/cron/process-batch` (1 foto per chiamata).
+
+| Piano | Processamento batch |
+|-------|---------------------|
+| **Hobby** | [GitHub Actions](.github/workflows/cron-process-batch.yml) ogni 5 min |
+| **Pro** | Aggiungi in `vercel.json`: `{ "path": "/api/cron/process-batch", "schedule": "*/5 * * * *" }` |
+
+Sblocco immediato (1 foto in coda):
+
+```bash
+curl -sS "https://TUO-APP.vercel.app/api/cron/process-batch?secret=$CRON_SECRET"
+```
+
 Su Hobby **rimuovi** la sezione `"crons"` da `vercel.json` prima del deploy, poi configura i secrets GitHub:
 
 - `VERCEL_APP_URL` — es. `https://tuo-app.vercel.app`

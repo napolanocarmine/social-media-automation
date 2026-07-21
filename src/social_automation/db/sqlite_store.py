@@ -650,6 +650,35 @@ def get_image_record(db_path: Path, *, image_id: int) -> dict[str, Any] | None:
     return dict(row) if row is not None else None
 
 
+def update_image_media_paths(
+    db_path: Path,
+    *,
+    image_id: int,
+    path: str | None = None,
+    original_path: str | None = None,
+    generated_image_path: str | None = None,
+) -> None:
+    """Aggiorna path/URL media dopo upload su Blob."""
+    ensure_db_schema(db_path)
+    with _connect(db_path) as conn:
+        conn.execute(
+            """
+            UPDATE images
+            SET path = COALESCE(?, path),
+                original_path = COALESCE(?, original_path),
+                generated_image_path = COALESCE(?, generated_image_path),
+                updated_at = datetime('now')
+            WHERE id = ?
+            """,
+            (
+                (path or "").strip() or None,
+                (original_path or "").strip() or None,
+                (generated_image_path or "").strip() or None,
+                int(image_id),
+            ),
+        )
+
+
 def update_image_copy_json(
     db_path: Path,
     *,

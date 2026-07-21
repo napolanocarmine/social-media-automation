@@ -27,6 +27,7 @@ from social_automation.drive.selection import normalize_business_category
 from social_automation.models import DriveAsset, MediaFormat, Platform
 from social_automation.processing.image_adjust import apply_retouch_to_file, crop_mode_for_platform
 from social_automation.settings import Settings, load_settings
+from social_automation.services.media import maybe_persist_processed_media_to_blob
 from social_automation.visual.models import VisualProductionResult
 from social_automation.visual.producer import produce_final_asset
 from social_automation.workflow.render import pick_latest_unrendered_asset
@@ -136,6 +137,20 @@ def process_local_photo(
         visual_status=production.visual_status,
         editing_required=production.editing_required,
     )
+
+    blob_urls = maybe_persist_processed_media_to_blob(
+        s.db_path,
+        image_id=image_id,
+        settings=s,
+        processed_path=final_path,
+        source_path=source_path,
+        original_path=production.original_path,
+        generated_image_path=production.generated_image_path,
+        source_asset_id=source_asset_id,
+        platform=platform.value,
+    )
+    if blob_urls.get("path"):
+        final_path = Path(blob_urls["path"])
 
     visual_ok = production.review.approved and production.visual_score >= s.visual_review_score_manual
     copy_ok = copy_approved(copy_data) if copy_data else False

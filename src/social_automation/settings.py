@@ -563,6 +563,8 @@ def load_settings() -> Settings:
             updates["db_backend"] = "postgres"
     if on_vercel:
         updates["db_backend"] = "postgres"
+        env_output = (os.environ.get("OUTPUT_DIR") or "").strip()
+        updates["output_dir"] = Path(env_output) if env_output else Path("/tmp/social-automation")
         env_storage = (os.environ.get("STORAGE_BACKEND") or "").strip().lower()
         if env_storage:
             updates["storage_backend"] = env_storage

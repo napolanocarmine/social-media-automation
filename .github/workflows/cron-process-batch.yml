@@ -1,0 +1,31 @@
+name: Cron process batch AI
+
+on:
+  schedule:
+    # GitHub Actions: intervallo minimo 5 minuti.
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  process-batch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Processa prossimo item in coda (fino a 5 foto per run)
+        env:
+          VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_APP_URL:-}" ] || [ -z "${CRON_SECRET:-}" ]; then
+            echo "Configura i secrets VERCEL_APP_URL e CRON_SECRET nel repository GitHub."
+            exit 1
+          fi
+          URL="${VERCEL_APP_URL%/}/api/cron/process-batch?secret=${CRON_SECRET}"
+          for _ in $(seq 1 5); do
+            resp=$(curl -fsS --max-time 320 "$URL")
+            echo "$resp"
+            if echo "$resp" | grep -q 'Nessun item in coda'; then
+              echo "Coda vuota, stop."
+              break
+            fi
+          done
