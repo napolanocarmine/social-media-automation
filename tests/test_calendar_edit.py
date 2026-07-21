@@ -13,7 +13,7 @@ from social_automation.db.store import (
     record_render_artifacts,
 )
 from social_automation.models import Platform
-from social_automation.web.calendar_edit_ui import _save_cancel, _save_reschedule
+from social_automation.services.calendar_edit import save_cancel, save_reschedule
 
 
 def test_caption_from_planning_detail_json() -> None:
@@ -40,7 +40,7 @@ def test_save_reschedule_creates_rescheduled_event(tmp_path: Path) -> None:
         detail=planning_detail_with_caption("Prima caption"),
     )
     ev = list_pending_events(db_path, limit=10)[0]
-    msg = _save_reschedule(
+    msg = save_reschedule(
         db_path,
         ev=ev,
         plan_date=datetime(2026, 6, 25).date(),
@@ -74,7 +74,7 @@ def test_save_cancel_removes_from_calendar(tmp_path: Path) -> None:
         scheduled_for=datetime(2026, 7, 1, 9, 0, 0),
     )
     ev = list_pending_events(db_path, limit=10)[0]
-    _save_cancel(db_path, ev=ev)
+    save_cancel(db_path, ev=ev)
     assert list_pending_events(db_path, limit=10) == []
     ensure_db_schema(db_path)
     items = list_calendar_items(
