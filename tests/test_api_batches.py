@@ -34,11 +34,8 @@ def test_start_ai_batch_creates_running_batch(tmp_path) -> None:
         }
     ]
     with patch(
-        "social_automation.services.batch_runner.start_selected_ai_batch",
-        wraps=__import__(
-            "social_automation.services.batch_runner", fromlist=["start_selected_ai_batch"]
-        ).start_selected_ai_batch,
-    ):
+        "social_automation.api.routers.batches.process_batch_queue",
+    ) as mock_process:
         response = client.post(
             "/api/v1/batches/ai",
             json={
@@ -50,12 +47,42 @@ def test_start_ai_batch_creates_running_batch(tmp_path) -> None:
         )
     assert response.status_code == 200
     batch_id = response.json()["batch_id"]
+    mock_process.assert_called_once()
     row = get_batch(db_path, batch_id=batch_id)
     assert row is not None
     assert row["status"] == "running"
     items = list_batch_items(db_path, batch_id=batch_id)
     assert len(items) == 1
     assert items[0]["status"] == "queued"
+
+
+def test_start_ai_batch_skips_auto_process_when_disabled(tmp_path) -> None:
+    db_path = tmp_path / "db.sqlite3"
+    out_dir = tmp_path / "output"
+    out_dir.mkdir()
+    settings = Settings(db_path=db_path, output_dir=out_dir, batch_auto_process=False)
+    client = _client(db_path, settings)
+
+    assets = [
+        {
+            "file_id": "abc123",
+            "name": "photo.jpg",
+            "mime_type": "image/jpeg",
+            "path_segments": ["2025", "06", "food"],
+        }
+    ]
+    with patch("social_automation.api.routers.batches.process_batch_queue") as mock_process:
+        response = client.post(
+            "/api/v1/batches/ai",
+            json={
+                "category": "food",
+                "platform": "instagram",
+                "media_format": "post",
+                "assets": assets,
+            },
+        )
+    assert response.status_code == 200
+    mock_process.assert_not_called()
 
 
 def test_active_batch_and_stop(tmp_path) -> None:

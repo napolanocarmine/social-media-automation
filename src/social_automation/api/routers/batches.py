@@ -17,6 +17,7 @@ from social_automation.api.schemas.drive_batches import (
     StartAiBatchResponse,
 )
 from social_automation.models import MediaFormat, Platform
+from social_automation.services.batch_queue import process_batch_queue
 from social_automation.services.batch_runner import start_selected_ai_batch
 from social_automation.services.batches import (
     get_active_running_batch,
@@ -98,6 +99,11 @@ def start_ai_batch(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if settings.batch_auto_process:
+        max_items = min(len(assets), int(settings.batch_auto_process_max_items))
+        process_batch_queue(settings, max_items=max_items)
+
     return StartAiBatchResponse(batch_id=batch_id)
 
 

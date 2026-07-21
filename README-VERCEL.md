@@ -55,14 +55,22 @@ Autenticazione: header `Authorization: Bearer $CRON_SECRET` o query `?secret=`.
 
 ### Batch AI (Story AI / ritocco foto)
 
-Su Vercel la coda **non** si processa da sola al click «Avvia coda»: serve `/api/cron/process-batch` (1 foto per chiamata).
+**Default (automatico):** al click «Avvia coda», `POST /api/v1/batches/ai` processa subito fino a
+`BATCH_AUTO_PROCESS_MAX_ITEMS` foto (default 5) nella stessa richiesta — niente cron manuale.
 
-| Piano | Processamento batch |
-|-------|---------------------|
-| **Hobby** | [GitHub Actions](.github/workflows/cron-process-batch.yml) ogni 5 min |
-| **Pro** | Aggiungi in `vercel.json`: `{ "path": "/api/cron/process-batch", "schedule": "*/5 * * * *" }` |
+| Modalità | Quando usarla |
+|----------|----------------|
+| **Auto on start** | Default — `BATCH_AUTO_PROCESS=true` |
+| **GitHub Actions** | Backup o batch lunghi — [cron-process-batch.yml](.github/workflows/cron-process-batch.yml) ogni 5 min |
+| **Vercel Cron (Pro)** | Aggiungi in `vercel.json`: `{ "path": "/api/cron/process-batch", "schedule": "*/5 * * * *" }` |
 
-Sblocco immediato (1 foto in coda):
+Disabilita l’auto-process (solo coda + cron esterno):
+
+```bash
+BATCH_AUTO_PROCESS=false
+```
+
+Sblocco manuale di emergenza (1 foto per chiamata):
 
 ```bash
 curl -sS "https://TUO-APP.vercel.app/api/cron/process-batch?secret=$CRON_SECRET"

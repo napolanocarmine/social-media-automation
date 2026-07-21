@@ -36,6 +36,20 @@ def _payload_dict(item: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
+def process_batch_queue(settings: Settings, *, max_items: int = 5) -> list[dict[str, Any]]:
+    """Processa fino a max_items dalla coda globale (1 item per chiamata interna)."""
+    limit = max(1, int(max_items))
+    results: list[dict[str, Any]] = []
+    for _ in range(limit):
+        result = process_next_batch_item(settings)
+        results.append(result)
+        if result.get("message") == "Nessun item in coda":
+            break
+        if str(result.get("status") or "").lower() == "stopped":
+            break
+    return results
+
+
 def process_next_batch_item(settings: Settings) -> dict[str, Any]:
     db_path = settings.db_path
     item = get_next_queued_batch_item(db_path)

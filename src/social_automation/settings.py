@@ -539,6 +539,16 @@ class Settings(BaseSettings):
         le=23,
         description="Ora locale (APP_TIMEZONE) fine finestra dispatch automatico (inclusa)",
     )
+    batch_auto_process: bool = Field(
+        default=True,
+        description="Dopo POST /batches/ai processa subito la coda (BATCH_AUTO_PROCESS)",
+    )
+    batch_auto_process_max_items: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Max foto processate per richiesta POST /batches/ai (BATCH_AUTO_PROCESS_MAX_ITEMS)",
+    )
 
     config_dir: Path = Field(default_factory=lambda: Path("config"))
     output_dir: Path = Field(default_factory=lambda: Path("output"))
@@ -591,6 +601,14 @@ def load_settings() -> Settings:
         env_cron = (os.environ.get("CRON_SECRET") or "").strip()
         if env_cron:
             updates["cron_secret"] = env_cron
+    env_batch_auto = (os.environ.get("BATCH_AUTO_PROCESS") or "").strip().lower()
+    if env_batch_auto in {"0", "false", "no", "off"}:
+        updates["batch_auto_process"] = False
+    elif env_batch_auto in {"1", "true", "yes", "on"}:
+        updates["batch_auto_process"] = True
+    env_batch_max = (os.environ.get("BATCH_AUTO_PROCESS_MAX_ITEMS") or "").strip()
+    if env_batch_max.isdigit():
+        updates["batch_auto_process_max_items"] = max(1, min(20, int(env_batch_max)))
     for field, env_key in (
         ("google_credentials_json", "GOOGLE_CREDENTIALS_JSON"),
         ("google_refresh_token", "GOOGLE_REFRESH_TOKEN"),
