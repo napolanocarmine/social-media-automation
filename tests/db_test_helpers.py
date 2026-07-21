@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -23,7 +24,7 @@ def execute_sql(db_path: Path, sql: str, params: tuple[Any, ...] = ()) -> None:
         url = (os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL") or "").strip()
         if url:
             postgres_store.set_database_url(url)
-        pg_sql = sql.replace("?", "%s")
+        pg_sql = _sqlite_sql_to_postgres(sql)
         with postgres_store._connect(db_path) as conn:
             conn.execute(pg_sql, params)
         return
@@ -39,7 +40,7 @@ def fetchone_sql(db_path: Path, sql: str, params: tuple[Any, ...] = ()) -> tuple
         url = (os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL") or "").strip()
         if url:
             postgres_store.set_database_url(url)
-        pg_sql = sql.replace("?", "%s")
+        pg_sql = _sqlite_sql_to_postgres(sql)
         with postgres_store._connect(db_path) as conn:
             row = conn.execute(pg_sql, params).fetchone()
         if row is None:
@@ -60,7 +61,7 @@ def fetchall_sql(db_path: Path, sql: str, params: tuple[Any, ...] = ()) -> list[
         url = (os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL") or "").strip()
         if url:
             postgres_store.set_database_url(url)
-        pg_sql = sql.replace("?", "%s")
+        pg_sql = _sqlite_sql_to_postgres(sql)
         with postgres_store._connect(db_path) as conn:
             rows = conn.execute(pg_sql, params).fetchall()
         return [_normalize_row(tuple(r.values())) for r in rows]
@@ -100,6 +101,11 @@ def metadata_json_payload(md: dict[str, Any]) -> dict[str, Any]:
     return json.loads(str(raw))
 
 
+def normalize_db_timestamp(value: Any) -> str:
+    text = str(value or "").strip()
+    return text.replace("+00:00", "").replace("Z", "")
+
+
 def _normalize_row(row: tuple[Any, ...]) -> tuple[Any, ...]:
     return tuple(_normalize_value(v) for v in row)
 
@@ -112,9 +118,28 @@ def _normalize_value(value: Any) -> Any:
         if text.endswith("+00:00"):
             return text[:-6]
         return text
+    if isinstance(value, str) and value.endswith("+00:00"):
+        return value[:-6]
     if isinstance(value, float) and value.is_integer():
         return int(value)
     return value
+
+
+def _sqlite_sql_to_postgres(sql: str) -> str:
+    pg = sql.replace("?", "%s")
+    pg = re.sub(
+        r"is_valid_by_quality_evaluation\s*=\s*1\b",
+        "is_valid_by_quality_evaluation = TRUE",
+        pg,
+        flags=re.IGNORECASE,
+    )
+    pg = re.sub(
+        r"is_valid_by_quality_evaluation\s*=\s*0\b",
+        "is_valid_by_quality_evaluation = FALSE",
+        pg,
+        flags=re.IGNORECASE,
+    )
+    return pg
 
 
 requires_sqlite = pytest.mark.skipif(is_postgres_backend(), reason="sqlite-only migration test")

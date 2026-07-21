@@ -1021,7 +1021,7 @@ def get_images_by_ids(db_path: Path, image_ids: list[int]) -> list[dict[str, Any
         if i not in seen:
             seen.add(i)
             uniq.append(i)
-    placeholders = ",".join("%s" * len(uniq))
+    placeholders = ",".join(["%s"] * len(uniq))
     sql = (
         "SELECT id, name, path, render_ig, render_fb, render_ig_story, render_fb_story, "
         "is_valid_by_quality_evaluation, quality_predicted_class, quality_predicted_confidence, "

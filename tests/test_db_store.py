@@ -10,6 +10,7 @@ from db_test_helpers import (
     fetchall_sql,
     fetchone_sql,
     metadata_json_payload,
+    normalize_db_timestamp,
     requires_sqlite,
     table_columns,
 )
@@ -138,7 +139,7 @@ def test_add_planning_event_inserts_history_row(db_path: Path, tmp_path: Path) -
     assert row == (
         "facebook",
         "planned",
-        scheduled_for_db_iso(planned),
+        normalize_db_timestamp(scheduled_for_db_iso(planned)),
         "test event",
     )
     latest = latest_plan_for_image(db_path, image_id=image_id, platform=Platform.FACEBOOK)
