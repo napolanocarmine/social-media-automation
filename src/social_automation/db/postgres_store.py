@@ -82,6 +82,27 @@ def ensure_db_schema(db_path: Path) -> None:
         conn.execute("SELECT 1")
 
 
+def truncate_all_tables_for_tests(db_path: Path | None = None) -> None:
+    """Svuota lo schema per test isolati (CI Postgres)."""
+    del db_path
+    with _connect() as conn:
+        conn.execute(
+            """
+            TRUNCATE TABLE
+                batch_items,
+                story_schedule_occurrences,
+                story_schedule_rules,
+                planning_events,
+                metadata,
+                batches,
+                images,
+                oauth_tokens,
+                cron_runs
+            RESTART IDENTITY CASCADE
+            """
+        )
+
+
 def _upsert_image(conn: psycopg.Connection, *, name: str, path: str) -> int:
     existing = conn.execute("SELECT id FROM images WHERE path = %s", (path,)).fetchone()
     if existing:
