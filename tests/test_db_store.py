@@ -33,7 +33,7 @@ from social_automation.db.store import (
     set_image_manual_publication_valid,
 )
 from social_automation.models import MediaFormat, Platform
-from tests.db_test_helpers import (
+from db_test_helpers import (
     execute_sql,
     fetchall_sql,
     fetchone_sql,
