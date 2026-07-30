@@ -77,6 +77,8 @@ def test_produce_calls_edit_plan_when_enabled(
         visual_use_ai_image_edit=True,
         visual_disable_pillow_retouch=True,
         visual_edit_plan_enabled=True,
+        visual_smart_routing=False,
+        visual_pipeline_trace=False,
         visual_hybrid_tone_pipeline=False,
         visual_edit_prompt_compiler=False,
         visual_gpt_pure_mode=False,

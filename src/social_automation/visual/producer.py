@@ -37,6 +37,16 @@ from social_automation.visual.prompts import (
     build_image_edit_prompt,
     build_image_edit_user_prompt,
 )
+from social_automation.visual.pipeline_trace import (
+    end_pipeline_trace,
+    get_pipeline_trace,
+    start_pipeline_trace,
+)
+from social_automation.visual.routing import (
+    resolve_produce_mode,
+    should_run_edit_plan,
+    should_run_prompt_compiler,
+)
 from social_automation.visual.review import decision_engine, run_visual_review
 
 _LOG = logging.getLogger(__name__)
@@ -48,10 +58,8 @@ _DEFAULT_HYBRID_TONE = LightAdjustments(exposure=0.08, contrast=0.04)
 @dataclass(frozen=True)
 class _EditPipelineFlags:
     gpt_pure: bool
-    edit_plan: bool
     precrop: bool
     hybrid: bool
-    compiler: bool
     skip_post_crop: bool
 
 
@@ -59,11 +67,58 @@ def _edit_pipeline_flags(settings: Settings) -> _EditPipelineFlags:
     pure = bool(settings.visual_gpt_pure_mode)
     return _EditPipelineFlags(
         gpt_pure=pure,
-        edit_plan=bool(settings.visual_edit_plan_enabled) and not pure,
         precrop=bool(settings.visual_precrop_before_api) and not pure,
         hybrid=bool(settings.visual_hybrid_tone_pipeline) and not pure,
-        compiler=bool(settings.visual_edit_prompt_compiler) and not pure,
         skip_post_crop=bool(settings.visual_skip_post_crop) or pure,
+    )
+
+
+@dataclass(frozen=True)
+class _ProducePlan:
+    use_original: bool
+    use_generative: bool
+    use_pixel: bool
+    use_pillow_only: bool
+
+
+def _build_produce_plan(
+    settings: Settings,
+    review: VisualReview,
+    decision: VisualDecision | None,
+) -> _ProducePlan:
+    ai_edit_ready = settings.visual_use_ai_image_edit and image_edit_configured(settings)
+    produce_mode = resolve_produce_mode(settings)
+
+    if decision is None:
+        use_original = False
+        use_generative = (
+            produce_mode == "generative"
+            and settings.visual_use_ai_image_edit
+            and ai_edit_ready
+        )
+        use_pixel = produce_mode == "pixel" or not settings.visual_use_ai_image_edit
+        use_pillow_only = False
+    else:
+        use_original = decision.use_original
+        use_generative = (
+            settings.visual_use_ai_image_edit
+            and ai_edit_ready
+            and decision.needs_ai_editing
+            and not decision.use_original
+            and produce_mode == "generative"
+        )
+        use_pixel = (
+            decision.needs_ai_editing
+            and not decision.use_original
+            and (produce_mode == "pixel" or not settings.visual_use_ai_image_edit)
+        )
+        use_pillow_only = not use_original and not use_generative and not use_pixel
+
+    return _ProducePlan(
+        use_original=use_original,
+        use_generative=use_generative,
+        use_pixel=use_pixel,
+        use_pillow_only=use_pillow_only,
     )
 
 
@@ -256,9 +311,15 @@ def _run_ai_image_edit(
     edit_plan = None
     edit_plan_notes = ""
     hybrid = pipeline.hybrid
-    if pipeline.edit_plan:
-        try:
-            edit_plan = run_image_edit_plan(
+    run_edit_plan = should_run_edit_plan(
+        settings,
+        business_category=business_category,
+        review=review,
+    )
+    trace = get_pipeline_trace()
+    if run_edit_plan:
+        def _plan_step() -> ImageEditPlan:
+            return run_image_edit_plan(
                 source_path,
                 settings=settings,
                 business_category=business_category,
@@ -266,6 +327,12 @@ def _run_ai_image_edit(
                 media_format=media_format,
                 channels=channels,
             )
+
+        try:
+            if trace is not None:
+                edit_plan = trace.run("edit_plan", _plan_step)
+            else:
+                edit_plan = _plan_step()
             if edit_plan.has_content:
                 edit_plan_notes = edit_plan.reasoning or "piano editing generato"
                 la = edit_plan.light_adjustments
@@ -280,6 +347,12 @@ def _run_ai_image_edit(
         except Exception as exc:
             _LOG.warning("Image edit plan fallito, proseguo senza piano: %s", exc)
             edit_plan_notes = f"edit plan fallback: {exc}"
+    elif trace is not None:
+        trace.skip("edit_plan", reason="routing or disabled")
+    elif pipeline.gpt_pure:
+        pass
+    else:
+        _LOG.debug("Edit plan skipped (smart routing or disabled)")
 
     tone_adjustments = _effective_tone_adjustments(edit_plan, hybrid=hybrid)
 
@@ -319,12 +392,14 @@ def _run_ai_image_edit(
             edit_plan=edit_plan,
             hybrid_mode=hybrid,
         )
-        if pipeline.compiler:
+        if should_run_prompt_compiler(settings):
             user_prompt = compile_image_edit_prompt(
                 user_prompt,
                 settings=settings,
                 edit_plan=edit_plan,
             )
+        elif trace is not None:
+            trace.skip("prompt_compiler", reason="disabled")
         legacy_prompt = build_image_edit_prompt(
             review=review_payload,
             business_category=business_category,
@@ -336,16 +411,22 @@ def _run_ai_image_edit(
             channels=channels,
             edit_plan=edit_plan,
         )
-        api_result = run_image_edit(
-            api_source,
-            instructions=instructions,
-            user_prompt=user_prompt,
-            legacy_prompt=legacy_prompt,
-            dest_path=api_dest,
-            settings=settings,
-            crop_mode=crop_mode,
-            jpeg_quality=jpeg_q,
-        )
+        def _image_edit_step() -> ImageEditApiResult:
+            return run_image_edit(
+                api_source,
+                instructions=instructions,
+                user_prompt=user_prompt,
+                legacy_prompt=legacy_prompt,
+                dest_path=api_dest,
+                settings=settings,
+                crop_mode=crop_mode,
+                jpeg_quality=jpeg_q,
+            )
+
+        if trace is not None:
+            api_result = trace.run("image_edit", _image_edit_step, backend=settings.visual_image_backend)
+        else:
+            api_result = _image_edit_step()
     finally:
         if precrop_path is not None and precrop_path.is_file():
             precrop_path.unlink(missing_ok=True)
@@ -408,6 +489,256 @@ def _run_ai_image_edit(
     return out_final, generated_path, method, plan_json, edit_plan_notes
 
 
+def _run_pillow_produce(
+    source_path: Path,
+    dest_path: Path,
+    *,
+    settings: Settings,
+    platform: Platform,
+    media_format: MediaFormat,
+    business_category: str,
+    crop_mode: str,
+    marketing_objective: str | None = None,
+    channels: list[Platform] | None = None,
+    method: str = "produce_pixel",
+) -> tuple[Path, dict[str, Any], str]:
+    trace = get_pipeline_trace()
+
+    def _retouch() -> dict[str, Any]:
+        return run_retouch_analysis(
+            source_path,
+            settings=settings,
+            business_category=business_category,
+            platform=platform,
+            media_format=media_format,
+            marketing_objective=marketing_objective,
+            channels=channels,
+        )
+
+    if trace is not None:
+        retouch_json = trace.run("retouch_analysis", _retouch)
+    else:
+        retouch_json = _retouch()
+    final_path = _export_with_pillow(
+        source_path,
+        dest_path,
+        platform=platform,
+        media_format=media_format,
+        crop_mode=crop_mode,
+        retouch_data=retouch_json,
+    )
+    return final_path, retouch_json, method
+
+
+def _run_generative_with_fallback(
+    source_path: Path,
+    dest_path: Path,
+    *,
+    settings: Settings,
+    platform: Platform,
+    media_format: MediaFormat,
+    business_category: str,
+    file_id: str,
+    crop_mode: str,
+    review: VisualReview,
+    force_ai_edit: bool,
+    marketing_objectives: list[str] | None = None,
+    marketing_objective: str | None = None,
+    channels: list[Platform] | None = None,
+) -> tuple[Path, Path | None, str, dict[str, Any] | None, str, dict[str, Any] | None]:
+    producer_notes = review.reasoning
+    try:
+        final_path, generated_path, method, edit_plan_json, plan_notes = _run_ai_image_edit(
+            source_path,
+            settings=settings,
+            platform=platform,
+            media_format=media_format,
+            business_category=business_category,
+            file_id=file_id,
+            crop_mode=crop_mode,
+            review=review,
+            marketing_objectives=marketing_objectives,
+            marketing_objective=marketing_objective,
+            channels=channels,
+        )
+        if plan_notes:
+            producer_notes = f"{review.reasoning} | {plan_notes}"
+        return final_path, generated_path, method, edit_plan_json, producer_notes, None
+    except Exception as exc:
+        if force_ai_edit:
+            raise RuntimeError(f"Image edit AI fallito: {exc}") from exc
+        _LOG.warning("AI edit fallito, fallback Pillow: %s", exc)
+        producer_notes = f"{review.reasoning} | AI fallback: {exc}"
+        final_path, retouch_json, method = _run_pillow_produce(
+            source_path,
+            dest_path,
+            settings=settings,
+            platform=platform,
+            media_format=media_format,
+            business_category=business_category,
+            crop_mode=crop_mode,
+            marketing_objective=marketing_objective,
+            channels=channels,
+            method="pillow_fallback",
+        )
+        return final_path, None, method, None, producer_notes, retouch_json
+
+
+def _produce_asset(
+    source_path: Path,
+    *,
+    settings: Settings,
+    platform: Platform,
+    media_format: MediaFormat,
+    business_category: str,
+    file_id: str,
+    review: VisualReview,
+    decision: VisualDecision | None = None,
+    marketing_objectives: list[str] | None = None,
+    marketing_objective: str | None = None,
+    channels: list[Platform] | None = None,
+) -> VisualProductionResult:
+    """Pipeline unificata: GPT direct (decision=None) o Visual Review."""
+    crop_mode = (
+        _normalize_crop_mode(review.suggested_format, platform=platform, media_format=media_format)
+        if decision is not None
+        else crop_mode_for_platform(platform, media_format)
+    )
+    dest_path = _dest_path(
+        settings.output_dir,
+        platform=platform,
+        media_format=media_format,
+        business_category=business_category,
+        file_id=file_id,
+    )
+    plan = _build_produce_plan(settings, review, decision)
+    force_ai_edit = bool(
+        settings.visual_use_ai_image_edit and settings.visual_disable_pillow_retouch
+    )
+    ai_edit_ready = settings.visual_use_ai_image_edit and image_edit_configured(settings)
+
+    if force_ai_edit and not ai_edit_ready and (plan.use_generative or decision is None):
+        raise RuntimeError(
+            "VISUAL_DISABLE_PILLOW_RETOUCH attivo ma image edit non configurato "
+            "(VISION_API_KEY e VISUAL_RESPONSES_MODEL richiesti)"
+        )
+
+    generated_path: Path | None = None
+    retouch_json: dict[str, Any] | None = None
+    edit_plan_json: dict[str, Any] | None = None
+    method = "original"
+    producer_notes = review.reasoning
+    status = decision.visual_status if decision else "ai_editing"
+
+    if plan.use_original:
+        final_path = _export_crop_only(source_path, dest_path, crop_mode=crop_mode)
+        method = "original"
+        if decision and decision.needs_manual_review:
+            status = "manual_review"
+    elif plan.use_generative:
+        final_path, generated_path, method, edit_plan_json, producer_notes, retouch_json = (
+            _run_generative_with_fallback(
+                source_path,
+                dest_path,
+                settings=settings,
+                platform=platform,
+                media_format=media_format,
+                business_category=business_category,
+                file_id=file_id,
+                crop_mode=crop_mode,
+                review=review,
+                force_ai_edit=force_ai_edit,
+                marketing_objectives=marketing_objectives,
+                marketing_objective=marketing_objective,
+                channels=channels,
+            )
+        )
+        if decision and method == "pillow_fallback":
+            decision = VisualDecision(
+                use_original=False,
+                needs_ai_editing=False,
+                needs_manual_review=decision.needs_manual_review,
+                visual_status="pillow_fallback",
+            )
+            status = "pillow_fallback"
+        elif force_ai_edit and method in {"ai_edited", "ai_edited_hybrid", "ai_edited_pure"}:
+            status = "ai_editing"
+    elif plan.use_pixel:
+        final_path, retouch_json, method = _run_pillow_produce(
+            source_path,
+            dest_path,
+            settings=settings,
+            platform=platform,
+            media_format=media_format,
+            business_category=business_category,
+            crop_mode=crop_mode,
+            marketing_objective=marketing_objective,
+            channels=channels,
+            method="produce_pixel",
+        )
+    elif plan.use_pillow_only:
+        if settings.visual_disable_pillow_retouch:
+            raise RuntimeError(
+                "VISUAL_DISABLE_PILLOW_RETOUCH attivo ma il path AI non è disponibile "
+                f"(score={review.score}, needs_editing={review.needs_editing})"
+            )
+        pillow_method = "pillow_fallback" if (decision and decision.needs_ai_editing) else "pillow"
+        final_path, retouch_json, method = _run_pillow_produce(
+            source_path,
+            dest_path,
+            settings=settings,
+            platform=platform,
+            media_format=media_format,
+            business_category=business_category,
+            crop_mode=crop_mode,
+            marketing_objective=marketing_objective,
+            channels=channels,
+            method=pillow_method,
+        )
+    elif decision is None:
+        raise RuntimeError(
+            "Edit AI non configurato. Imposta VISUAL_USE_AI_IMAGE_EDIT=true e "
+            "VISUAL_RESPONSES_MODEL, oppure VISUAL_PRODUCE_MODE=pixel."
+        )
+    else:
+        raise RuntimeError(
+            "Nessun path di produzione disponibile per la foto "
+            f"(score={review.score}, needs_editing={review.needs_editing})"
+        )
+
+    if decision is None:
+        visual_status = (
+            "ai_editing"
+            if method in {"ai_edited", "ai_edited_hybrid", "ai_edited_pure"}
+            else method
+        )
+    else:
+        visual_status = status
+        if decision.needs_manual_review and visual_status == "original":
+            visual_status = "manual_review"
+
+    trace = get_pipeline_trace()
+    trace_json = trace.to_dict() if trace is not None else None
+    if edit_plan_json is None and trace_json:
+        edit_plan_json = {"pipeline_trace": trace_json}
+    elif trace_json:
+        edit_plan_json = {**edit_plan_json, "pipeline_trace": trace_json}
+
+    return VisualProductionResult(
+        final_path=str(final_path),
+        original_path=str(source_path),
+        generated_image_path=str(generated_path) if generated_path else None,
+        visual_score=review.score,
+        visual_status=visual_status,
+        editing_required=not plan.use_original,
+        method=method,
+        review=review,
+        retouch_json=retouch_json,
+        producer_notes=producer_notes,
+        edit_plan_json=edit_plan_json,
+    )
+
+
 def _produce_gpt_direct(
     source_path: Path,
     *,
@@ -422,114 +753,18 @@ def _produce_gpt_direct(
 ) -> VisualProductionResult:
     """Foto selezionata → prompt editing → API (senza Visual Review)."""
     review = _gpt_stub_review(platform=platform, media_format=media_format)
-    crop_mode = crop_mode_for_platform(platform, media_format)
-    produce_mode = (settings.visual_produce_mode or "generative").strip().lower()
-    ai_edit_ready = settings.visual_use_ai_image_edit and image_edit_configured(settings)
-    force_ai_edit = bool(
-        settings.visual_use_ai_image_edit and settings.visual_disable_pillow_retouch
-    )
-
-    if force_ai_edit and not ai_edit_ready:
-        raise RuntimeError(
-            "VISUAL_DISABLE_PILLOW_RETOUCH attivo ma image edit non configurato "
-            "(VISION_API_KEY e VISUAL_RESPONSES_MODEL richiesti)"
-        )
-
-    generated_path: Path | None = None
-    retouch_json: dict[str, Any] | None = None
-    edit_plan_json: dict[str, Any] | None = None
-    method = "original"
-    producer_notes = review.reasoning
-
-    if produce_mode == "generative" and settings.visual_use_ai_image_edit and ai_edit_ready:
-        try:
-            final_path, generated_path, method, edit_plan_json, plan_notes = _run_ai_image_edit(
-                source_path,
-                settings=settings,
-                platform=platform,
-                media_format=media_format,
-                business_category=business_category,
-                file_id=file_id,
-                crop_mode=crop_mode,
-                review=review,
-                marketing_objectives=marketing_objectives,
-                marketing_objective=marketing_objective,
-                channels=channels,
-            )
-            if plan_notes:
-                producer_notes = f"{review.reasoning} | {plan_notes}"
-        except Exception as exc:
-            if force_ai_edit:
-                raise RuntimeError(f"Image edit AI fallito: {exc}") from exc
-            _LOG.warning("GPT direct edit fallito, fallback Pillow: %s", exc)
-            producer_notes = f"{review.reasoning} | AI fallback: {exc}"
-            retouch_json = run_retouch_analysis(
-                source_path,
-                settings=settings,
-                business_category=business_category,
-                platform=platform,
-                media_format=media_format,
-                marketing_objective=marketing_objective,
-                channels=channels,
-            )
-            final_path = _export_with_pillow(
-                source_path,
-                _dest_path(
-                    settings.output_dir,
-                    platform=platform,
-                    media_format=media_format,
-                    business_category=business_category,
-                    file_id=file_id,
-                ),
-                platform=platform,
-                media_format=media_format,
-                crop_mode=crop_mode,
-                retouch_data=retouch_json,
-            )
-            method = "pillow_fallback"
-    elif produce_mode == "pixel" or not settings.visual_use_ai_image_edit:
-        retouch_json = run_retouch_analysis(
-            source_path,
-            settings=settings,
-            business_category=business_category,
-            platform=platform,
-            media_format=media_format,
-            marketing_objective=marketing_objective,
-            channels=channels,
-        )
-        final_path = _export_with_pillow(
-            source_path,
-            _dest_path(
-                settings.output_dir,
-                platform=platform,
-                media_format=media_format,
-                business_category=business_category,
-                file_id=file_id,
-            ),
-            platform=platform,
-            media_format=media_format,
-            crop_mode=crop_mode,
-            retouch_data=retouch_json,
-        )
-        method = "produce_pixel"
-    else:
-        raise RuntimeError(
-            "Edit AI non configurato. Imposta VISUAL_USE_AI_IMAGE_EDIT=true e "
-            "VISUAL_RESPONSES_MODEL, oppure VISUAL_PRODUCE_MODE=pixel."
-        )
-
-    return VisualProductionResult(
-        final_path=str(final_path),
-        original_path=str(source_path),
-        generated_image_path=str(generated_path) if generated_path else None,
-        visual_score=review.score,
-        visual_status="ai_editing" if method in {"ai_edited", "ai_edited_hybrid", "ai_edited_pure"} else method,
-        editing_required=True,
-        method=method,
+    return _produce_asset(
+        source_path,
+        settings=settings,
+        platform=platform,
+        media_format=media_format,
+        business_category=business_category,
+        file_id=file_id,
         review=review,
-        retouch_json=retouch_json,
-        producer_notes=producer_notes,
-        edit_plan_json=edit_plan_json,
+        decision=None,
+        marketing_objectives=marketing_objectives,
+        marketing_objective=marketing_objective,
+        channels=channels,
     )
 
 
@@ -546,167 +781,37 @@ def _produce_with_visual_review(
     channels: list[Platform] | None = None,
 ) -> VisualProductionResult:
     """Pipeline legacy: Visual Review → decision → edit / originale / Pillow."""
-    review = run_visual_review(
+    trace = get_pipeline_trace()
+
+    def _review_step() -> VisualReview:
+        return run_visual_review(
+            source_path,
+            settings=settings,
+            business_category=business_category,
+            platform=platform,
+            media_format=media_format,
+            marketing_objectives=marketing_objectives,
+            marketing_objective=marketing_objective,
+            channels=channels,
+        )
+
+    if trace is not None:
+        review = trace.run("visual_review", _review_step)
+    else:
+        review = _review_step()
+    decision = decision_engine(review, settings=settings)
+    return _produce_asset(
         source_path,
         settings=settings,
-        business_category=business_category,
-        platform=platform,
-        media_format=media_format,
-        marketing_objectives=marketing_objectives,
-        marketing_objective=marketing_objective,
-        channels=channels,
-    )
-    decision = decision_engine(review, settings=settings)
-    crop_mode = _normalize_crop_mode(review.suggested_format, platform=platform, media_format=media_format)
-    final_path = _dest_path(
-        settings.output_dir,
         platform=platform,
         media_format=media_format,
         business_category=business_category,
         file_id=file_id,
-    )
-    generated_path: Path | None = None
-    retouch_json: dict[str, Any] | None = None
-    edit_plan_json: dict[str, Any] | None = None
-    method = "original"
-    producer_notes = review.reasoning
-
-    force_ai_edit = bool(
-        settings.visual_use_ai_image_edit and settings.visual_disable_pillow_retouch
-    )
-    ai_edit_ready = settings.visual_use_ai_image_edit and image_edit_configured(settings)
-    produce_mode = (settings.visual_produce_mode or "generative").strip().lower()
-    use_original_path = decision.use_original
-    use_generative_produce = (
-        settings.visual_use_ai_image_edit
-        and ai_edit_ready
-        and decision.needs_ai_editing
-        and not decision.use_original
-        and produce_mode == "generative"
-    )
-    use_pixel_produce = (
-        decision.needs_ai_editing
-        and not decision.use_original
-        and (produce_mode == "pixel" or not settings.visual_use_ai_image_edit)
-    )
-
-    if force_ai_edit and not ai_edit_ready:
-        raise RuntimeError(
-            "VISUAL_DISABLE_PILLOW_RETOUCH attivo ma image edit non configurato "
-            "(VISION_API_KEY e VISUAL_IMAGE_MODEL richiesti)"
-        )
-
-    if use_original_path:
-        final_path = _export_crop_only(source_path, final_path, crop_mode=crop_mode)
-        method = "original"
-    elif use_generative_produce:
-        try:
-            final_path, generated_path, method, edit_plan_json, plan_notes = _run_ai_image_edit(
-                source_path,
-                settings=settings,
-                platform=platform,
-                media_format=media_format,
-                business_category=business_category,
-                file_id=file_id,
-                crop_mode=crop_mode,
-                review=review,
-                marketing_objectives=marketing_objectives,
-                marketing_objective=marketing_objective,
-                channels=channels,
-            )
-            if plan_notes:
-                producer_notes = f"{review.reasoning} | {plan_notes}"
-        except Exception as exc:
-            if force_ai_edit:
-                raise RuntimeError(f"Image edit AI fallito: {exc}") from exc
-            _LOG.warning("Visual Producer AI fallito, fallback Pillow: %s", exc)
-            producer_notes = f"{review.reasoning} | AI fallback: {exc}"
-            retouch_json = run_retouch_analysis(
-                source_path,
-                settings=settings,
-                business_category=business_category,
-                platform=platform,
-                media_format=media_format,
-                marketing_objective=marketing_objective,
-                channels=channels,
-            )
-            final_path = _export_with_pillow(
-                source_path,
-                final_path,
-                platform=platform,
-                media_format=media_format,
-                crop_mode=crop_mode,
-                retouch_data=retouch_json,
-            )
-            method = "pillow_fallback"
-            decision = VisualDecision(
-                use_original=False,
-                needs_ai_editing=False,
-                needs_manual_review=decision.needs_manual_review,
-                visual_status="pillow_fallback",
-            )
-    elif use_pixel_produce:
-        retouch_json = run_retouch_analysis(
-            source_path,
-            settings=settings,
-            business_category=business_category,
-            platform=platform,
-            media_format=media_format,
-            marketing_objective=marketing_objective,
-            channels=channels,
-        )
-        final_path = _export_with_pillow(
-            source_path,
-            final_path,
-            platform=platform,
-            media_format=media_format,
-            crop_mode=crop_mode,
-            retouch_data=retouch_json,
-        )
-        method = "produce_pixel"
-    elif settings.visual_disable_pillow_retouch:
-        raise RuntimeError(
-            "VISUAL_DISABLE_PILLOW_RETOUCH attivo ma il path AI non è disponibile "
-            f"(score={review.score}, needs_editing={review.needs_editing})"
-        )
-    else:
-        retouch_json = run_retouch_analysis(
-            source_path,
-            settings=settings,
-            business_category=business_category,
-            platform=platform,
-            media_format=media_format,
-            marketing_objective=marketing_objective,
-            channels=channels,
-        )
-        final_path = _export_with_pillow(
-            source_path,
-            final_path,
-            platform=platform,
-            media_format=media_format,
-            crop_mode=crop_mode,
-            retouch_data=retouch_json,
-        )
-        method = "pillow_fallback" if decision.needs_ai_editing else "pillow"
-
-    status = decision.visual_status
-    if force_ai_edit and method in {"ai_edited", "ai_edited_hybrid", "ai_edited_pure"}:
-        status = "ai_editing"
-    if decision.needs_manual_review and status == "original":
-        status = "manual_review"
-
-    return VisualProductionResult(
-        final_path=str(final_path),
-        original_path=str(source_path),
-        generated_image_path=str(generated_path) if generated_path else None,
-        visual_score=review.score,
-        visual_status=status,
-        editing_required=not use_original_path,
-        method=method,
         review=review,
-        retouch_json=retouch_json,
-        producer_notes=producer_notes,
-        edit_plan_json=edit_plan_json,
+        decision=decision,
+        marketing_objectives=marketing_objectives,
+        marketing_objective=marketing_objective,
+        channels=channels,
     )
 
 
@@ -723,26 +828,35 @@ def produce_final_asset(
     channels: list[Platform] | None = None,
 ) -> VisualProductionResult:
     biz = (business_category or "photo").strip().lower()
-    if settings.visual_review_enabled:
-        return _produce_with_visual_review(
-            source_path,
-            settings=settings,
-            platform=platform,
-            media_format=media_format,
-            business_category=biz,
-            file_id=file_id,
-            marketing_objectives=marketing_objectives,
-            marketing_objective=marketing_objective,
-            channels=channels,
-        )
-    return _produce_gpt_direct(
-        source_path,
-        settings=settings,
-        platform=platform,
-        media_format=media_format,
-        business_category=biz,
-        file_id=file_id,
-        marketing_objectives=marketing_objectives,
-        marketing_objective=marketing_objective,
-        channels=channels,
-    )
+    trace: Any = None
+    if settings.visual_pipeline_trace:
+        trace = start_pipeline_trace(photo_id=file_id)
+    try:
+        if settings.visual_review_enabled:
+            result = _produce_with_visual_review(
+                source_path,
+                settings=settings,
+                platform=platform,
+                media_format=media_format,
+                business_category=biz,
+                file_id=file_id,
+                marketing_objectives=marketing_objectives,
+                marketing_objective=marketing_objective,
+                channels=channels,
+            )
+        else:
+            result = _produce_gpt_direct(
+                source_path,
+                settings=settings,
+                platform=platform,
+                media_format=media_format,
+                business_category=biz,
+                file_id=file_id,
+                marketing_objectives=marketing_objectives,
+                marketing_objective=marketing_objective,
+                channels=channels,
+            )
+        return result
+    finally:
+        if trace is not None:
+            end_pipeline_trace(log=settings.visual_pipeline_trace)

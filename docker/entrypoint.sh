@@ -7,13 +7,6 @@ cmd="${1:-api}"
 shift || true
 
 case "${cmd}" in
-  ui|ui-legacy)
-    exec streamlit run src/social_automation/web/app.py \
-      --server.address=0.0.0.0 \
-      --server.port=8501 \
-      --server.headless=true \
-      "$@"
-    ;;
   scheduler)
     exec /app/docker/dispatch-loop.sh
     ;;

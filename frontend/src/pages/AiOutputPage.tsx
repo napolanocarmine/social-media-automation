@@ -1,11 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { BatchProgressBanner } from "../components/BatchProgressBanner";
 import { ErrorNotice } from "../components/ErrorNotice";
 import { ApprovalBadge, ImageCompare } from "../components/ImageCompare";
 import { imageReviewCardClass, imageReviewGridClass } from "../components/imageReviewLayout";
-import { fetchAiOutput } from "../lib/api/client";
+import { fetchAiOutput, reprocessImage } from "../lib/api/client";
 import { getErrorMessage } from "../lib/api/errors";
 
 const filters = [
@@ -16,14 +16,34 @@ const filters = [
 ] as const;
 
 export function AiOutputPage() {
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const batchParam = searchParams.get("batch");
   const batchId = batchParam && /^\d+$/.test(batchParam) ? Number(batchParam) : undefined;
   const [filter, setFilter] = useState<(typeof filters)[number]["value"]>("pending");
+  const [reprocessError, setReprocessError] = useState<string | null>(null);
+  const [reprocessingId, setReprocessingId] = useState<number | null>(null);
 
   const query = useQuery({
     queryKey: ["images", "ai-output", filter],
     queryFn: () => fetchAiOutput(filter),
+  });
+
+  const reprocessMutation = useMutation({
+    mutationFn: (imageId: number) => reprocessImage(imageId),
+    onMutate: (imageId) => {
+      setReprocessError(null);
+      setReprocessingId(imageId);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["images", "ai-output"] });
+    },
+    onError: (err) => {
+      setReprocessError(getErrorMessage(err, "Rigenerazione fallita"));
+    },
+    onSettled: () => {
+      setReprocessingId(null);
+    },
   });
 
   return (
@@ -31,11 +51,16 @@ export function AiOutputPage() {
       <header>
         <h2 className="text-2xl font-semibold">② Output AI</h2>
         <p className="mt-1 text-[var(--story-muted)]">
-          Anteprima ritocco: originale Drive vs asset finale. Il copy si genera in pianificazione.
+          Confronto originale vs asset finale. Profilo <strong>quality</strong>: edit plan, compiler
+          e pre-crop attivi. Usa «Rigenera» per rifare l&apos;editing come il Custom GPT.
         </p>
       </header>
 
       <BatchProgressBanner batchId={batchId} />
+
+      {reprocessError ? (
+        <ErrorNotice title="Rigenerazione non riuscita" message={reprocessError} />
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         {filters.map((item) => (
@@ -87,7 +112,12 @@ export function AiOutputPage() {
               </h3>
               <ApprovalBadge status={image.approval_status} />
             </div>
-            <ImageCompare image={image} compact />
+            <ImageCompare
+              image={image}
+              compact
+              onReprocess={(id) => reprocessMutation.mutate(id)}
+              isReprocessing={reprocessingId === image.id && reprocessMutation.isPending}
+            />
           </article>
         ))}
       </div>

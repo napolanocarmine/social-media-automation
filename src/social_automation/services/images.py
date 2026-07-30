@@ -38,6 +38,39 @@ def _approval_status_label(value: Any) -> str:
     return "approved" if int(value) == 1 else "rejected"
 
 
+def _parse_json_field(raw: Any) -> dict[str, Any] | None:
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str) and raw.strip():
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                return parsed
+        except (ValueError, TypeError):
+            return None
+    return None
+
+
+def _ai_insights_from_retouch(retouch: dict[str, Any] | None) -> dict[str, Any]:
+    if not retouch:
+        return {}
+    plan = retouch.get("edit_plan")
+    if not isinstance(plan, dict):
+        return {
+            "producer_notes": str(retouch.get("producer_notes") or retouch.get("reasoning") or "").strip()
+            or None,
+        }
+    crop = str(plan.get("crop_plan") or "").strip()
+    reasoning = str(plan.get("reasoning") or "").strip()
+    summary_parts = [p for p in (crop, reasoning) if p]
+    return {
+        "revised_prompt": str(plan.get("revised_prompt") or "").strip() or None,
+        "edit_plan_summary": " · ".join(summary_parts[:2]) if summary_parts else None,
+        "producer_notes": str(retouch.get("producer_notes") or retouch.get("reasoning") or "").strip()
+        or None,
+    }
+
+
 def _serialize_image_row(
     row: dict[str, Any],
     *,
@@ -50,6 +83,7 @@ def _serialize_image_row(
     original = resolve_original_path(db_path, image_id=image_id, row=row, settings=settings)
     meta = latest_metadata_for_image(db_path, image_id=image_id) if include_metadata else None
     visual_method: str | None = None
+    retouch = _parse_json_field(row.get("retouch_json"))
     if meta and meta.get("metadata_json"):
         try:
             mj_raw = meta.get("metadata_json")
@@ -58,6 +92,7 @@ def _serialize_image_row(
                 visual_method = str(mj.get("visual_method") or "").strip() or None
         except (ValueError, TypeError):
             pass
+    insights = _ai_insights_from_retouch(retouch)
 
     return {
         "id": image_id,
@@ -71,6 +106,9 @@ def _serialize_image_row(
         if row.get("editing_required") is not None
         else None,
         "visual_method": visual_method,
+        "revised_prompt": insights.get("revised_prompt"),
+        "edit_plan_summary": insights.get("edit_plan_summary"),
+        "producer_notes": insights.get("producer_notes"),
         "has_processed_file": processed is not None,
         "has_original_file": original is not None,
         "media": media_urls_for_image(image_id),
@@ -96,7 +134,8 @@ def list_ai_output(
     total = count_ai_output_images(db_path, approval_filter=approval_filter)
     return {
         "items": [
-            _serialize_image_row(r, db_path=db_path, settings=settings) for r in rows
+            _serialize_image_row(r, db_path=db_path, settings=settings, include_metadata=True)
+            for r in rows
         ],
         "total": total,
         "limit": limit,
@@ -190,3 +229,15 @@ def apply_approval_action(
 
 def list_business_categories() -> list[str]:
     return business_category_options(Path("config/categories.yaml"))
+
+
+def reprocess_ai_image(
+    db_path: Path,
+    *,
+    image_id: int,
+    settings: Settings | None = None,
+) -> dict[str, Any]:
+    from social_automation.workflow.process_photo import reprocess_existing_image
+
+    s = settings or load_settings()
+    return reprocess_existing_image(image_id, settings=s)

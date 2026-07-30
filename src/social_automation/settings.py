@@ -433,6 +433,38 @@ class Settings(BaseSettings):
             "Non forza l'edit su foto già approvate (score >= soglia)."
         ),
     )
+    visual_pipeline_profile: str = Field(
+        default="quality",
+        description=(
+            "Preset pipeline visuale: fast | balanced | quality | pixel | custom. "
+            "Le variabili env esplicite hanno priorità sul profilo."
+        ),
+    )
+    visual_kb_scope_enabled: bool = Field(
+        default=True,
+        description=(
+            "Se true, invia al modello solo le sezioni KB rilevanti per il task "
+            "(riduce token e latenza)."
+        ),
+    )
+    visual_parallel_copy: bool = Field(
+        default=True,
+        description=(
+            "Se true e generate_copy attivo, genera copy in parallelo all'editing "
+            "sull'immagine originale."
+        ),
+    )
+    visual_smart_routing: bool = Field(
+        default=True,
+        description=(
+            "Routing rule-based: salta edit plan per food statico (batch) e foto già "
+            "approvate dalla Visual Review."
+        ),
+    )
+    visual_pipeline_trace: bool = Field(
+        default=True,
+        description="Log strutturato latency per step pipeline (edit plan, image edit, copy).",
+    )
 
     dispatch_require_approval: bool = Field(
         default=True,
@@ -620,6 +652,9 @@ def load_settings() -> Settings:
                 updates[field] = val
     if updates:
         s = s.model_copy(update=updates)
+    from social_automation.settings_profiles import apply_visual_pipeline_profile
+
+    s = apply_visual_pipeline_profile(s)
     path_raw = _strip_env_value_quotes((s.meta_page_token_file or "").strip())
     tok = ""
     if path_raw:

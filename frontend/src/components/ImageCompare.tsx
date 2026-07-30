@@ -85,11 +85,16 @@ type LightboxState = {
 export function ImageCompare({
   image,
   compact = false,
+  onReprocess,
+  isReprocessing = false,
 }: {
   image: ImageSummary;
   compact?: boolean;
+  onReprocess?: (imageId: number) => void;
+  isReprocessing?: boolean;
 }) {
   const [lightbox, setLightbox] = useState<LightboxState | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   const metaParts: string[] = [];
   if (image.visual_score != null) metaParts.push(`Score ${image.visual_score.toFixed(1)}`);
@@ -103,10 +108,72 @@ export function ImageCompare({
   const processedSrc = image.has_processed_file ? image.media.processed : undefined;
   const originalLabel = compact ? "Originale" : "Originale Drive";
   const processedLabel = compact ? "Asset finale" : "Asset finale";
+  const hasAiDetails =
+    Boolean(image.edit_plan_summary) ||
+    Boolean(image.revised_prompt) ||
+    Boolean(image.producer_notes);
 
   return (
     <>
       <div className={compact ? "space-y-1.5" : "space-y-3"}>
+        {(onReprocess || hasAiDetails) && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {onReprocess && (
+              <button
+                type="button"
+                disabled={isReprocessing || !image.has_original_file}
+                onClick={() => onReprocess(image.id)}
+                className={[
+                  "rounded-md border border-[var(--story-border)] px-2 py-0.5 text-[10px] transition",
+                  isReprocessing
+                    ? "cursor-wait opacity-60"
+                    : "hover:border-[var(--story-accent)] hover:text-[var(--story-accent)]",
+                ].join(" ")}
+                title="Rigenera con profilo quality (edit plan + compiler)"
+              >
+                {isReprocessing ? "Rigenerazione…" : "Rigenera"}
+              </button>
+            )}
+            {hasAiDetails && (
+              <button
+                type="button"
+                onClick={() => setShowDetails((v) => !v)}
+                className="rounded-md px-2 py-0.5 text-[10px] text-[var(--story-muted)] hover:text-[var(--story-text)]"
+              >
+                {showDetails ? "Nascondi dettagli AI" : "Dettagli AI"}
+              </button>
+            )}
+          </div>
+        )}
+        {showDetails && hasAiDetails && (
+          <div
+            className={[
+              "rounded-md border border-[var(--story-border)] bg-black/20 text-[var(--story-muted)]",
+              compact ? "space-y-1 p-2 text-[10px]" : "space-y-2 p-3 text-xs",
+            ].join(" ")}
+          >
+            {image.edit_plan_summary ? (
+              <p>
+                <span className="text-[var(--story-text)]">Piano crop: </span>
+                {image.edit_plan_summary}
+              </p>
+            ) : null}
+            {image.producer_notes ? (
+              <p>
+                <span className="text-[var(--story-text)]">Note: </span>
+                {image.producer_notes}
+              </p>
+            ) : null}
+            {image.revised_prompt ? (
+              <details>
+                <summary className="cursor-pointer text-[var(--story-text)]">
+                  Prompt revised (API)
+                </summary>
+                <p className="mt-1 whitespace-pre-wrap break-words">{image.revised_prompt}</p>
+              </details>
+            ) : null}
+          </div>
+        )}
         {metaParts.length > 0 && (
           <p
             className={[

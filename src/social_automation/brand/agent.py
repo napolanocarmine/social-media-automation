@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from social_automation.brand.kb_scope import KbScope
 from social_automation.brand.loader import (
     StoryAgentConfig,
     build_system_message,
@@ -61,7 +62,11 @@ def run_retouch_analysis(
     if not api_configured(api_key=settings.vision_api_key, model=settings.vision_model):
         raise ValueError("VISION_API_KEY e VISION_MODEL richiesti per Story AI")
     cfg = agent_cfg or load_story_agent_config()
-    system = build_system_message(cfg)
+    system = build_system_message(
+        cfg,
+        scope=KbScope.RETOUCH,
+        kb_scope_enabled=settings.visual_kb_scope_enabled,
+    )
     pillar = pillar_for_category(business_category)
     fmt = _platform_format_hint(platform, media_format)
     ch = normalize_channels(channels, fallback_platform=platform)
@@ -107,7 +112,11 @@ def generate_copy_pack(
     if not api_configured(api_key=settings.vision_api_key, model=settings.vision_model):
         raise ValueError("VISION_API_KEY e VISION_MODEL richiesti per Story AI")
     cfg = agent_cfg or load_story_agent_config()
-    system = build_system_message(cfg)
+    system = build_system_message(
+        cfg,
+        scope=KbScope.COPY,
+        kb_scope_enabled=settings.visual_kb_scope_enabled,
+    )
     pillar = pillar_for_category(business_category)
     user = build_copy_user_prompt(
         cfg,
@@ -148,7 +157,11 @@ def run_auto_pack(
     if not api_configured(api_key=settings.vision_api_key, model=settings.vision_model):
         raise ValueError("VISION_API_KEY e VISION_MODEL richiesti per Story AI")
     cfg = agent_cfg or load_story_agent_config()
-    system = build_system_message(cfg)
+    system = build_system_message(
+        cfg,
+        scope=KbScope.COPY,
+        kb_scope_enabled=settings.visual_kb_scope_enabled,
+    )
     pillar = pillar_for_category(business_category)
     fmt = _platform_format_hint(platform, media_format)
     ch = normalize_channels(channels, fallback_platform=platform)

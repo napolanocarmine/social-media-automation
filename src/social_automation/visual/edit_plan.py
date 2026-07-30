@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from social_automation.brand.kb_scope import KbScope
 from social_automation.brand.loader import (
     build_system_message,
     load_story_agent_config,
@@ -89,9 +90,14 @@ def run_image_edit_plan(
         content_pillar=pillar,
         channels=channels,
     )
+    cfg = load_story_agent_config()
     data = chat_vision_json(
         image_path=image_path,
-        system_message=build_system_message(load_story_agent_config()),
+        system_message=build_system_message(
+            cfg,
+            scope=KbScope.EDIT_PLAN,
+            kb_scope_enabled=settings.visual_kb_scope_enabled,
+        ),
         user_prompt=user,
         api_key=settings.vision_api_key,
         model=plan_model,

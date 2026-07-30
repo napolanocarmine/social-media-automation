@@ -19,6 +19,7 @@ from social_automation.services.images import (
     list_ai_output,
     list_business_categories,
     list_pending_approval,
+    reprocess_ai_image,
 )
 from social_automation.services.planning import (
     PLANNABLE_PAGE_SIZE_DEFAULT,
@@ -154,6 +155,24 @@ def image_detail(
     settings: SettingsDep,
     db_path: DbPathDep,
 ) -> ImageSummary:
+    row = get_image_detail(db_path, image_id=image_id, settings=settings)
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"Immagine #{image_id} non trovata")
+    return ImageSummary(**row)
+
+
+@router.post("/{image_id}/reprocess", response_model=ImageSummary)
+def reprocess_image(
+    image_id: int,
+    settings: SettingsDep,
+    db_path: DbPathDep,
+) -> ImageSummary:
+    try:
+        reprocess_ai_image(db_path, image_id=image_id, settings=settings)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     row = get_image_detail(db_path, image_id=image_id, settings=settings)
     if row is None:
         raise HTTPException(status_code=404, detail=f"Immagine #{image_id} non trovata")

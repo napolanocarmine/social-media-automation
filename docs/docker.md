@@ -2,8 +2,6 @@
 
 Esecuzione containerizzata di **React web + FastAPI** + **scheduler** (`dispatch-scheduled` ogni minuto).
 
-Streamlit resta disponibile come servizio opzionale (`--profile streamlit`).
-
 ## Prerequisiti
 
 - Docker Desktop (o Docker Engine + Compose v2)
@@ -38,7 +36,6 @@ docker compose up -d
 | `api` | `entrypoint api` | Backend FastAPI (uvicorn :8000) |
 | `scheduler` | `entrypoint scheduler` | Pubblicazione automatica |
 | `cli` (profile) | `docker compose run --rm cli …` | Comandi one-shot |
-| `ui-legacy` (profile `streamlit`) | `entrypoint ui` | Streamlit deprecato |
 
 ## Accesso remoto (2 collaboratori)
 
@@ -60,15 +57,6 @@ uvicorn social_automation.api.main:app --reload --port 8000
 # Terminale 2
 cd frontend && npm run dev   # :5173, proxy /api → :8000
 ```
-
-## Streamlit legacy
-
-```bash
-docker compose --profile streamlit up -d ui-legacy
-# http://localhost:8501
-```
-
-Preferire lo stack `web` + `api` per il workflow operativo.
 
 ## CLI nel container
 
@@ -93,7 +81,6 @@ Anteprima senza pubblicare: dry-run da UI, `POST /api/v1/dispatch/dry-run` o `di
 | Variabile | Default | Descrizione |
 |-----------|---------|-------------|
 | `WEB_PORT` | `8080` | Porta host UI React (nginx) |
-| `STREAMLIT_PORT` | `8501` | Porta host Streamlit legacy |
 | `API_PORT` | `8000` | Porta uvicorn nel container `api` |
 | `DISPATCH_INTERVAL_SECONDS` | `600` | Intervallo scheduler (10 min) |
 | `DISPATCH_LIMIT` | `100` | Max eventi per run |

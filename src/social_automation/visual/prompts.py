@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from social_automation.brand.kb_scope import KbScope
 from social_automation.brand.loader import (
     build_brand_context_message,
     build_system_message,
@@ -276,7 +277,11 @@ def build_image_edit_instructions(settings: Settings | None = None) -> str:
     s = settings or load_settings()
     if not s.visual_edit_include_kb:
         return ""
-    return build_system_message(load_story_agent_config())
+    return build_system_message(
+        load_story_agent_config(),
+        scope=KbScope.IMAGE_EDIT,
+        kb_scope_enabled=s.visual_kb_scope_enabled,
+    )
 
 
 def build_image_edit_user_prompt(
@@ -371,4 +376,9 @@ def build_image_edit_prompt(
 
 
 def build_visual_review_system_message(settings: Settings | None = None) -> str:
-    return build_brand_context_message(load_story_agent_config())
+    s = settings or load_settings()
+    return build_brand_context_message(
+        load_story_agent_config(),
+        scope=KbScope.VISUAL_REVIEW,
+        kb_scope_enabled=s.visual_kb_scope_enabled,
+    )

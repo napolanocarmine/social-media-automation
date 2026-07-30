@@ -18,6 +18,9 @@ class ImageSummary(BaseModel):
     visual_status: str | None = None
     editing_required: bool | None = None
     visual_method: str | None = None
+    revised_prompt: str | None = None
+    edit_plan_summary: str | None = None
+    producer_notes: str | None = None
     has_processed_file: bool
     has_original_file: bool
     media: ImageMediaUrls

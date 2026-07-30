@@ -724,6 +724,113 @@ def update_image_visual_state(
         )
 
 
+def update_image_ai_artifacts(
+    db_path: Path,
+    *,
+    image_id: int,
+    path: str,
+    retouch_json: dict[str, Any] | None = None,
+    original_path: str | None = None,
+    generated_image_path: str | None = None,
+    visual_score: float | None = None,
+    visual_status: str | None = None,
+    editing_required: bool | None = None,
+) -> None:
+    """Aggiorna output Story AI dopo rigenerazione."""
+    ensure_db_schema(db_path)
+    retouch_text = json.dumps(retouch_json, ensure_ascii=False) if retouch_json else None
+    with _connect(db_path) as conn:
+        conn.execute(
+            """
+            UPDATE images
+            SET path = ?,
+                retouch_json = COALESCE(?, retouch_json),
+                original_path = COALESCE(?, original_path),
+                generated_image_path = COALESCE(?, generated_image_path),
+                visual_score = COALESCE(?, visual_score),
+                visual_status = COALESCE(?, visual_status),
+                editing_required = COALESCE(?, editing_required),
+                is_valid_for_publication = NULL,
+                updated_at = datetime('now')
+            WHERE id = ?
+            """,
+            (
+                path,
+                retouch_text,
+                (original_path or "").strip() or None,
+                (generated_image_path or "").strip() or None,
+                float(visual_score) if visual_score is not None else None,
+                (visual_status or "").strip() or None,
+                int(editing_required) if editing_required is not None else None,
+                int(image_id),
+            ),
+        )
+
+
+def append_image_metadata_snapshot(
+    db_path: Path,
+    *,
+    image_id: int,
+    payload: dict[str, Any],
+    source_asset_id: str | None = None,
+    source_asset_name: str | None = None,
+    business_category: str | None = None,
+) -> None:
+    """Nuova riga metadata dopo rigenerazione AI."""
+    ensure_db_schema(db_path)
+    media_format_value = _normalize_media_format(payload.get("media_format"))
+    with _connect(db_path) as conn:
+        conn.execute(
+            """
+            INSERT INTO metadata(
+                image_id,
+                platform,
+                template_id,
+                template_dimensions_source,
+                canvas_width,
+                canvas_height,
+                export_width,
+                export_height,
+                image_fit,
+                asset_id,
+                design_id,
+                source_file,
+                output_file,
+                mode,
+                note,
+                metadata_json,
+                source_asset_id,
+                source_asset_name,
+                business_category,
+                media_format
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                int(image_id),
+                payload.get("platform"),
+                payload.get("template_id"),
+                payload.get("template_dimensions_source"),
+                _int_or_none(payload.get("canvas_width")),
+                _int_or_none(payload.get("canvas_height")),
+                _int_or_none(payload.get("export_width")),
+                _int_or_none(payload.get("export_height")),
+                payload.get("image_fit"),
+                payload.get("asset_id"),
+                payload.get("design_id"),
+                payload.get("source_file"),
+                payload.get("output_file"),
+                payload.get("mode"),
+                payload.get("note"),
+                json.dumps(payload, ensure_ascii=True),
+                (source_asset_id or "").strip() or None,
+                (source_asset_name or "").strip() or None,
+                (business_category or "").strip().lower() or None,
+                media_format_value,
+            ),
+        )
+
+
 def _visual_output_sql_predicate(alias: str = "i") -> str:
     """Immagine elaborata da Visual Producer (senza richiedere copy)."""
     a = alias

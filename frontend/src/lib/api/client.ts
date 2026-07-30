@@ -15,6 +15,9 @@ export type ImageSummary = {
   visual_status: string | null;
   editing_required: boolean | null;
   visual_method: string | null;
+  revised_prompt: string | null;
+  edit_plan_summary: string | null;
+  producer_notes: string | null;
   has_processed_file: boolean;
   has_original_file: boolean;
   media: ImageMediaUrls;
@@ -278,6 +281,14 @@ export async function postImageApproval(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action }),
+    }),
+  );
+}
+
+export async function reprocessImage(imageId: number): Promise<ImageSummary> {
+  return parseJson(
+    await fetch(`/api/v1/images/${imageId}/reprocess`, {
+      method: "POST",
     }),
   );
 }

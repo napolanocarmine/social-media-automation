@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import mimetypes
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Literal
 
@@ -14,10 +15,12 @@ from social_automation.config_loaders import (
     resolve_drive_folder_id,
 )
 from social_automation.db.store import (
+    append_image_metadata_snapshot,
     get_image_record,
     latest_metadata_for_image,
     record_processed_artifacts,
     set_image_manual_publication_valid,
+    update_image_ai_artifacts,
     update_image_visual_state,
     update_vision_eval,
 )
@@ -81,31 +84,61 @@ def process_local_photo(
     biz = (business_category or "").strip().lower() or None
     fid = (source_asset_id or source_path.stem).strip()
 
-    production = produce_final_asset(
-        source_path,
-        settings=s,
-        platform=platform,
-        media_format=media_format,
-        business_category=biz,
-        file_id=fid,
-        marketing_objectives=marketing_objectives,
-        marketing_objective=marketing_objective,
-        channels=channels,
-    )
-    final_path = Path(production.final_path)
-
     copy_data: dict[str, Any] | None = None
-    if generate_copy:
-        copy_data = generate_copy_pack(
-            final_path,
+    production: VisualProductionResult
+
+    if generate_copy and s.visual_parallel_copy and media_format != MediaFormat.STORY:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            production_future = executor.submit(
+                produce_final_asset,
+                source_path,
+                settings=s,
+                platform=platform,
+                media_format=media_format,
+                business_category=biz,
+                file_id=fid,
+                marketing_objectives=marketing_objectives,
+                marketing_objective=marketing_objective,
+                channels=channels,
+            )
+            copy_future = executor.submit(
+                generate_copy_pack,
+                source_path,
+                settings=s,
+                business_category=biz,
+                platform=platform,
+                media_format=media_format,
+                marketing_objectives=marketing_objectives,
+                marketing_objective=marketing_objective,
+                channels=channels,
+            )
+            production = production_future.result()
+            copy_data = copy_future.result()
+    else:
+        production = produce_final_asset(
+            source_path,
             settings=s,
-            business_category=biz,
             platform=platform,
             media_format=media_format,
+            business_category=biz,
+            file_id=fid,
             marketing_objectives=marketing_objectives,
             marketing_objective=marketing_objective,
             channels=channels,
         )
+        if generate_copy:
+            copy_data = generate_copy_pack(
+                source_path,
+                settings=s,
+                business_category=biz,
+                platform=platform,
+                media_format=media_format,
+                marketing_objectives=marketing_objectives,
+                marketing_objective=marketing_objective,
+                channels=channels,
+            )
+
+    final_path = Path(production.final_path)
 
     retouch_data: dict[str, Any] = production.retouch_json or _visual_review_dict(production)
     visual_review = _visual_review_dict(production)
@@ -320,6 +353,138 @@ def process_drive_story_photo(
         source_asset_id=selected.file_id,
         source_asset_name=selected.name,
     )
+
+
+def _resolve_original_source_path(
+    row: dict[str, Any],
+    meta: dict[str, Any] | None,
+) -> Path:
+    candidates = [
+        str(row.get("original_path") or "").strip(),
+        str((meta or {}).get("source_file") or "").strip(),
+    ]
+    for cand in candidates:
+        if cand:
+            path = Path(cand)
+            if path.is_file():
+                return path
+    raise ValueError(
+        "File originale non trovato. Scarica di nuovo da Drive o verifica la cache locale."
+    )
+
+
+def reprocess_existing_image(
+    image_id: int,
+    *,
+    settings: Settings | None = None,
+) -> dict[str, Any]:
+    """Rigenera l'asset AI a partire dall'originale (profilo quality / parità GPT)."""
+    s = settings or load_settings()
+    if not api_configured(api_key=s.vision_api_key, model=s.vision_model):
+        raise ValueError("VISION_API_KEY e VISION_MODEL richiesti per Story AI")
+
+    row = get_image_record(s.db_path, image_id=int(image_id))
+    if row is None:
+        raise ValueError(f"Immagine #{image_id} non trovata")
+
+    meta = latest_metadata_for_image(s.db_path, image_id=int(image_id)) or {}
+    platform_raw = str(meta.get("platform") or Platform.INSTAGRAM.value).strip().lower()
+    if platform_raw not in {Platform.INSTAGRAM.value, Platform.FACEBOOK.value}:
+        raise ValueError(f"Piattaforma mancante per immagine #{image_id}")
+    platform = Platform(platform_raw)
+
+    fmt_raw = str(meta.get("media_format") or MediaFormat.POST.value).strip().lower()
+    allowed_formats = {MediaFormat.POST.value, MediaFormat.STORY.value}
+    media_format = MediaFormat(fmt_raw if fmt_raw in allowed_formats else MediaFormat.POST.value)
+
+    biz = str(meta.get("business_category") or row.get("business_category") or "").strip().lower() or None
+    source_path = _resolve_original_source_path(row, meta)
+    file_id = str(meta.get("source_asset_id") or source_path.stem).strip()
+
+    marketing_objectives = list(meta.get("marketing_objectives") or [])
+    marketing_objective = meta.get("marketing_objective")
+    channels_raw = meta.get("channels") or []
+    channels = [Platform(str(c)) for c in channels_raw if str(c).strip()] or None
+
+    production = produce_final_asset(
+        source_path,
+        settings=s,
+        platform=platform,
+        media_format=media_format,
+        business_category=biz,
+        file_id=file_id,
+        marketing_objectives=marketing_objectives or None,
+        marketing_objective=str(marketing_objective) if marketing_objective else None,
+        channels=channels,
+    )
+    final_path = Path(production.final_path)
+    retouch_data = production.retouch_json or _visual_review_dict(production)
+
+    update_image_ai_artifacts(
+        s.db_path,
+        image_id=int(image_id),
+        path=str(final_path),
+        retouch_json=retouch_data,
+        original_path=production.original_path,
+        generated_image_path=production.generated_image_path,
+        visual_score=production.visual_score,
+        visual_status=production.visual_status,
+        editing_required=production.editing_required,
+    )
+
+    meta_payload = {
+        "platform": platform.value,
+        "media_format": media_format.value,
+        "business_category": biz,
+        "source_file": str(source_path),
+        "output_file": str(final_path),
+        "mode": "story_ai_v2",
+        "process_mode": "reprocess",
+        "visual_method": production.method,
+        "visual_status": production.visual_status,
+        "marketing_objectives": marketing_objectives,
+        "marketing_objective": marketing_objective,
+        "channels": channels_raw,
+    }
+    append_image_metadata_snapshot(
+        s.db_path,
+        image_id=int(image_id),
+        payload=meta_payload,
+        source_asset_id=str(meta.get("source_asset_id") or "").strip() or None,
+        source_asset_name=str(meta.get("source_asset_name") or "").strip() or None,
+        business_category=biz,
+    )
+
+    blob_urls = maybe_persist_processed_media_to_blob(
+        s.db_path,
+        image_id=int(image_id),
+        settings=s,
+        processed_path=final_path,
+        source_path=source_path,
+        original_path=production.original_path,
+        generated_image_path=production.generated_image_path,
+        source_asset_id=str(meta.get("source_asset_id") or "").strip() or None,
+        platform=platform.value,
+    )
+    if blob_urls.get("path"):
+        final_path = Path(blob_urls["path"])
+
+    set_image_manual_publication_valid(s.db_path, image_id=int(image_id), value=None)
+    update_vision_eval(
+        s.db_path,
+        image_id=int(image_id),
+        vision_pass=0,
+        reason="Rigenerata: approvazione manuale richiesta",
+    )
+
+    return {
+        "image_id": int(image_id),
+        "processed_file": str(final_path),
+        "visual_method": production.method,
+        "visual_status": production.visual_status,
+        "visual_score": production.visual_score,
+        "visual_review": _visual_review_dict(production),
+    }
 
 
 def generate_copy_for_image(

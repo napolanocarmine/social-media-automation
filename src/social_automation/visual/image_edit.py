@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from social_automation.settings import Settings
@@ -16,6 +17,8 @@ from social_automation.visual.responses_image import (
     edit_image_via_responses,
     responses_image_configured,
 )
+
+_LOG = logging.getLogger(__name__)
 
 
 def image_edit_configured(settings: Settings) -> bool:
@@ -40,6 +43,9 @@ def run_image_edit(
     quality = jpeg_quality if jpeg_quality is not None else int(settings.visual_jpeg_export_quality)
     backend = (settings.visual_image_backend or "responses").strip().lower()
     if backend == "images_edits":
+        _LOG.warning(
+            "VISUAL_IMAGE_BACKEND=images_edits è deprecato; preferire responses."
+        )
         path = edit_image_with_prompt(
             source_path,
             prompt=legacy_prompt,

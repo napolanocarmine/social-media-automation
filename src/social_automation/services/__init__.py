@@ -1,1 +1,1 @@
-"""Logica applicativa condivisa tra Streamlit, API FastAPI e worker."""
+"""Logica applicativa condivisa tra API FastAPI, worker e CLI."""

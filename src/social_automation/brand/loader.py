@@ -8,6 +8,7 @@ from pathlib import Path
 
 import yaml
 
+from social_automation.brand.kb_scope import KbScope, filter_business_rules
 from social_automation.settings import load_settings, repo_root
 
 _DEFAULT_SYSTEM = Path("config/brand/story_system.md")
@@ -93,6 +94,36 @@ def _resolve_path(path: Path | None, *, defaults: tuple[Path, ...]) -> Path:
     return defaults[0]
 
 
+_config_cache: dict[tuple, StoryAgentConfig] = {}
+
+
+def _config_paths_key(
+    *,
+    system_file: Path,
+    rules_file: Path,
+    tasks_file: Path,
+) -> tuple:
+    def _mtime(path: Path) -> float:
+        try:
+            return path.stat().st_mtime if path.is_file() else 0.0
+        except OSError:
+            return 0.0
+
+    return (
+        str(system_file.resolve()),
+        _mtime(system_file),
+        str(rules_file.resolve()),
+        _mtime(rules_file),
+        str(tasks_file.resolve()),
+        _mtime(tasks_file),
+    )
+
+
+def clear_story_agent_config_cache() -> None:
+    """Svuota cache config (utile in test)."""
+    _config_cache.clear()
+
+
 def load_story_agent_config(
     *,
     agent_yaml: Path | None = None,
@@ -127,8 +158,17 @@ def load_story_agent_config(
         defaults=(root / _DEFAULT_AGENT_MD, root / _DEFAULT_AGENT_YAML),
     )
 
+    cache_key = _config_paths_key(
+        system_file=system_file,
+        rules_file=rules_file,
+        tasks_file=tasks_file,
+    )
+    cached = _config_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     tasks = _load_task_sections(tasks_file)
-    return StoryAgentConfig(
+    cfg = StoryAgentConfig(
         name=str(tasks.get("name") or "Story AI Assistant"),
         system_preamble=_read_text(system_file),
         business_rules_text=_read_text(rules_file),
@@ -137,26 +177,46 @@ def load_story_agent_config(
         produce_prompt=str(tasks.get("produce_prompt") or "").strip(),
         auto_prompt=str(tasks.get("auto_prompt") or "").strip(),
     )
+    _config_cache[cache_key] = cfg
+    return cfg
 
 
-def build_system_message(cfg: StoryAgentConfig) -> str:
+def build_system_message(
+    cfg: StoryAgentConfig,
+    *,
+    scope: KbScope = KbScope.FULL,
+    kb_scope_enabled: bool = True,
+) -> str:
     """
     Layer 1 + Layer 2 per chiamate chat (``role: system``).
 
     Il Layer 3 (task) va nel messaggio user separato.
+    Con ``kb_scope_enabled``, il Layer 2 è filtrato per task.
     """
+    rules_text = cfg.business_rules_text.strip()
+    if kb_scope_enabled and scope != KbScope.FULL and rules_text:
+        rules_text = filter_business_rules(rules_text, scope)
     parts: list[str] = []
     if cfg.system_preamble.strip():
         parts.append(cfg.system_preamble.strip())
-    if cfg.business_rules_text.strip():
+    if rules_text:
         parts.append("\n\n--- BUSINESS RULES ---\n\n")
-        parts.append(cfg.business_rules_text.strip())
+        parts.append(rules_text)
     return "".join(parts).strip()
 
 
-def build_brand_context_message(cfg: StoryAgentConfig | None = None) -> str:
-    """Layer 1 + 2 (contesto brand completo, senza task)."""
-    return build_system_message(cfg or load_story_agent_config())
+def build_brand_context_message(
+    cfg: StoryAgentConfig | None = None,
+    *,
+    scope: KbScope = KbScope.FULL,
+    kb_scope_enabled: bool = True,
+) -> str:
+    """Layer 1 + 2 (contesto brand, senza task)."""
+    return build_system_message(
+        cfg or load_story_agent_config(),
+        scope=scope,
+        kb_scope_enabled=kb_scope_enabled,
+    )
 
 
 def pillar_for_category(category: str | None) -> str:

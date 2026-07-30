@@ -26,8 +26,6 @@ cd /path/to/social-media-automation
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -e .
-# oppure, con frontend Streamlit:
-# pip install -e ".[ui]"
 cp .env.example .env
 # Opzionale: copia gli example in config operativi
 cp config/schedule.example.yaml config/schedule.yaml
@@ -45,7 +43,7 @@ docker compose up -d
 ./scripts/smoke-e2e.sh
 ```
 
-Dettagli, volumi, Tailscale e Streamlit legacy: [docs/docker.md](docs/docker.md).
+Dettagli, volumi e Tailscale: [docs/docker.md](docs/docker.md).
 
 ### Frontend React + API (sviluppo)
 
@@ -202,37 +200,6 @@ Nota: i render vengono salvati in sottocartelle dedicate:
 La modalità **placeholder** salva una copia dell'immagine nelle stesse cartelle.
 I metadati non vengono più esportati in file JSON: sono salvati nel database SQLite.
 
-### Frontend Streamlit (legacy, opzionale)
-
-> **Deprecato:** l’UI operativa è **React** (`frontend/` + FastAPI). Streamlit resta per rollback temporaneo.
-
-```bash
-pip install -e ".[ui]"
-streamlit run src/social_automation/web/app.py
-# Docker legacy: docker compose --profile streamlit up -d ui-legacy  → :8501
-```
-
-La pagina Streamlit consente di:
-
-- navigare con menu `☰` a destra tra:
-  - `Rendering`
-  - `Approvazione pubblicazione`
-  - `Pianifica immagine`
-  - `Prepara settimana`
-  - `Calendario pianificazione`
-  - `Dispatch schedulazione`
-- selezionare categoria, piattaforma e **formato** (`Post` feed o `Story` 9:16);
-- eseguire il render Drive -> Canva (saltando automaticamente asset già renderizzati
-  per la stessa piattaforma e formato);
-- vedere preview dell'ultimo render;
-- sfogliare tre gallerie: `Instagram (post)`, `Facebook (post)` e
-  `Stories (IG + FB)` (cartella unica condivisa);
-- vedere gli eventi scaduti pronti alla pubblicazione e avviare dispatch reale o dry-run;
-- in **Pianifica immagine** (post) suggerire il prossimo slot libero da `config/schedule.yaml`;
-- eseguire **Prepara settimana** per automatizzare render, gate qualità/vision e pianificazione.
-
-Le **story** si pubblicano tramite regole ricorrenti/one-shot e `dispatch-scheduled` (Graph API `media_type=STORIES`).
-
 ## Scheduler automatico su macOS (launchd)
 
 Per pubblicare in automatico senza intervento manuale, esegui `dispatch-scheduled` ogni **10 minuti** (configurabile con `DISPATCH_INTERVAL_SECONDS=600`).
@@ -283,7 +250,7 @@ Il database viene aggiornato da:
 - `publish-test` (anche `--dry-run`)
 - `prepare-week`
 - `dispatch-scheduled`
-- frontend Streamlit
+- UI React + API FastAPI
 
 ## Configurazione Meta
 
