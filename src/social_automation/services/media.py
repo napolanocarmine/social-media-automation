@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import mimetypes
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 from social_automation.db.store import (
@@ -23,8 +23,35 @@ def is_remote_media_url(value: str) -> bool:
     return parsed.scheme in {"http", "https"}
 
 
+def is_private_blob_url(value: str) -> bool:
+    """True se l'URL punta a un oggetto Blob private (non caricabile in <img> senza auth)."""
+    return ".private.blob.vercel-storage.com/" in (value or "").lower()
+
+
+def blob_url_requires_proxy(url: str, settings: Settings | None = None) -> bool:
+    """True se il browser deve passare dal proxy API invece dell'URL Blob diretto."""
+    if not is_remote_media_url(url):
+        return False
+    if is_private_blob_url(url):
+        return True
+    s = settings or load_settings()
+    backend = (s.storage_backend or "local").strip().lower()
+    if backend in {"vercel_blob", "blob"}:
+        return (s.blob_access or "public").strip().lower() == "private"
+    return False
+
+
+def _media_proxy_url(image_id: int, kind: Literal["processed", "original"]) -> str:
+    return f"/api/v1/media/images/{image_id}/{kind}"
+
+
 def _content_type_for_path(path: Path) -> str:
     mime, _ = mimetypes.guess_type(str(path))
+    return mime or "image/jpeg"
+
+
+def _content_type_for_url(url: str) -> str:
+    mime, _ = mimetypes.guess_type(urlparse(url).path)
     return mime or "image/jpeg"
 
 
@@ -98,22 +125,34 @@ def maybe_persist_processed_media_to_blob(
     return updates
 
 
-def media_urls_for_image(image_id: int, row: dict[str, Any] | None = None) -> dict[str, str]:
-    """URL per preview immagini — Blob diretto o proxy API locale."""
-    if row:
-        processed = str(row.get("path") or "").strip()
-        original = str(row.get("original_path") or "").strip()
-        if processed and is_remote_media_url(processed):
-            proc_url = processed
-        else:
-            proc_url = f"/api/v1/media/images/{image_id}/processed"
-        if original and is_remote_media_url(original):
-            orig_url = original
-        else:
-            orig_url = f"/api/v1/media/images/{image_id}/original"
-        return {"processed": proc_url, "original": orig_url}
-    base = f"/api/v1/media/images/{image_id}"
-    return {"processed": f"{base}/processed", "original": f"{base}/original"}
+def media_urls_for_image(
+    image_id: int,
+    row: dict[str, Any] | None = None,
+    settings: Settings | None = None,
+) -> dict[str, str]:
+    """URL per preview immagini — proxy API per Blob private, URL diretto se public."""
+    proc_proxy = _media_proxy_url(image_id, "processed")
+    orig_proxy = _media_proxy_url(image_id, "original")
+    if not row:
+        return {"processed": proc_proxy, "original": orig_proxy}
+
+    processed = str(row.get("path") or "").strip()
+    original = str(row.get("original_path") or "").strip()
+    if processed and is_remote_media_url(processed) and not blob_url_requires_proxy(processed, settings):
+        proc_url = processed
+    else:
+        proc_url = proc_proxy
+    if original and is_remote_media_url(original) and not blob_url_requires_proxy(original, settings):
+        orig_url = original
+    else:
+        orig_url = orig_proxy
+    return {"processed": proc_url, "original": orig_url}
+
+
+def serve_remote_media_bytes(url: str, *, settings: Settings) -> tuple[bytes, str]:
+    """Scarica bytes da Blob (private o public) con credenziali server-side."""
+    data = get_storage(settings).download(url)
+    return data, _content_type_for_url(url)
 
 
 def _allowed_output_roots(settings: Settings | None = None) -> list[Path]:
@@ -225,9 +264,8 @@ def resolve_dispatch_image_path(
     raw = (image_path_raw or "").strip()
     if not raw:
         raise FileNotFoundError("Path immagine vuoto")
-    storage = get_storage(settings)
     if is_remote_media_url(raw):
-        return storage.download_to_tmp(raw)
+        return get_storage(settings).download_to_tmp(raw)
     path = Path(raw)
     if path.is_file():
         return path

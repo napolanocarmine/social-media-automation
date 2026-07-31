@@ -124,7 +124,7 @@ def _serialize_image_row(
         "producer_notes": insights.get("producer_notes"),
         "has_processed_file": processed_url is not None,
         "has_original_file": original_url is not None,
-        "media": media_urls_for_image(image_id, row=row),
+        "media": media_urls_for_image(image_id, row=row, settings=settings),
         "created_at": str(row.get("created_at") or ""),
         "updated_at": str(row.get("updated_at") or ""),
     }

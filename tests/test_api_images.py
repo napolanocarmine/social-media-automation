@@ -115,6 +115,7 @@ def test_pending_approval_exposes_blob_media_urls(tmp_path: Path) -> None:
         db_path=db_path,
         output_dir=settings.output_dir,
         storage_backend="vercel_blob",
+        blob_access="public",
     )
     client = _client(db_path, vercel_settings)
     listing = client.get(
@@ -127,3 +128,31 @@ def test_pending_approval_exposes_blob_media_urls(tmp_path: Path) -> None:
     assert item["has_original_file"] is True
     assert item["media"]["processed"] == blob_processed
     assert item["media"]["original"] == blob_original
+
+
+def test_pending_approval_uses_proxy_for_private_blob_urls(tmp_path: Path) -> None:
+    db_path, settings, image_id = _seed_ai_image(tmp_path)
+    blob_processed = "https://demo.private.blob.vercel-storage.com/processed/ig/2.jpg"
+    blob_original = "https://demo.private.blob.vercel-storage.com/originals/drive/abc.jpg"
+    from social_automation.db.store import update_image_media_paths
+
+    update_image_media_paths(
+        db_path,
+        image_id=image_id,
+        path=blob_processed,
+        original_path=blob_original,
+    )
+    vercel_settings = Settings(
+        db_path=db_path,
+        output_dir=settings.output_dir,
+        storage_backend="vercel_blob",
+    )
+    client = _client(db_path, vercel_settings)
+    listing = client.get(
+        "/api/v1/images/pending-approval"
+        "?platform=instagram&format=post&category=tutte&page=0"
+    )
+    assert listing.status_code == 200
+    item = listing.json()["items"][0]
+    assert item["media"]["processed"] == f"/api/v1/media/images/{image_id}/processed"
+    assert item["media"]["original"] == f"/api/v1/media/images/{image_id}/original"
