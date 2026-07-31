@@ -5,6 +5,9 @@ from fastapi import APIRouter
 from social_automation.api.deps import DbPathDep, SettingsDep
 from social_automation.api.schemas.dashboard import HealthResponse
 from social_automation.db.store import ensure_db_schema
+from social_automation.drive.token_store import resolve_google_refresh_token
+
+API_FEATURES = "google-drive-reconnect-2026-07-31"
 
 router = APIRouter(tags=["health"])
 
@@ -32,10 +35,15 @@ def health(settings: SettingsDep, db_path: DbPathDep) -> HealthResponse:
         blob_configured = False
 
     return HealthResponse(
+        api_features=API_FEATURES,
         db_ok=db_ok,
         db_backend=settings.db_backend,
         db_error=db_error,
         storage_backend=settings.storage_backend,
         blob_configured=blob_configured,
         blob_auth_mode=blob_auth_mode,
+        google_oauth_web_configured=bool((settings.google_credentials_json or "").strip()),
+        google_refresh_configured=bool(
+            resolve_google_refresh_token(settings, db_path=db_path)
+        ),
     )

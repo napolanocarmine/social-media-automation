@@ -166,34 +166,33 @@ export function SelectDrivePage() {
 
   const oauthStatus = oauthStatusQuery.data;
   const oauthWebAvailable = oauthStatus?.credentials_configured === true;
-  const showReconnectPanel =
-    oauthWebAvailable ||
-    oauthStatus?.refresh_token_configured === true ||
-    oauthStatus?.token_valid === false ||
-    tokenError;
-  const showReconnect =
-    tokenError ||
-    oauthStatus?.token_valid === false ||
-    oauthWebAvailable ||
-    (oauthStatus?.refresh_token_configured === true && !oauthWebAvailable);
+  const errorLooksLikeToken =
+    Boolean(error && /invalid_grant|scaduta o revocata|token has been expired/i.test(error));
+  const hasTokenProblem =
+    tokenError || oauthStatus?.token_valid === false || errorLooksLikeToken;
 
   function handleReconnectGoogle() {
-    if (!oauthWebAvailable) {
-      setError(
-        "Riconnessione web non disponibile: imposta GOOGLE_CREDENTIALS_JSON (client OAuth Web) " +
-          "e GOOGLE_REDIRECT_URI su Vercel, poi ridistribuisci l'app.",
-      );
-      return;
-    }
     window.location.href = googleDriveReconnectUrl();
   }
 
   function driveConnectionLabel(): string {
+    if (oauthStatusQuery.isError) return "stato non disponibile (API non aggiornata?)";
     if (!oauthStatus) return "verifica in corso…";
+    if (hasTokenProblem) return "token scaduto o revocato";
     if (oauthStatus.token_valid === true) return "connesso";
-    if (oauthStatus.token_valid === false) return "token scaduto o revocato";
-    if (oauthStatus.refresh_token_configured) return "token configurato (non verificato)";
+    if (oauthStatus.refresh_token_configured) return "token configurato";
     return "non connesso";
+  }
+
+  function displayError(): string | null {
+    if (!error) return null;
+    if (errorLooksLikeToken || tokenError) {
+      return (
+        "Connessione Google Drive scaduta o revocata. Usa «Riconnetti Google Drive» " +
+        "qui sopra, oppure apri /api/v1/oauth/google/start nel browser."
+      );
+    }
+    return error;
   }
 
   return (
@@ -211,37 +210,46 @@ export function SelectDrivePage() {
         </p>
       )}
 
-      {showReconnectPanel && (
-        <div className="space-y-2 rounded-lg border border-[var(--story-border)] bg-[var(--story-surface)] px-4 py-3 text-sm">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-[var(--story-muted)]">
-              Google Drive: {driveConnectionLabel()}
-              {oauthStatus?.token_source ? ` (sorgente: ${oauthStatus.token_source})` : ""}
-            </span>
-            <button
-              type="button"
-              onClick={handleReconnectGoogle}
-              disabled={!oauthWebAvailable}
-              className="rounded-lg border border-[var(--story-accent)] px-3 py-1.5 text-xs font-medium text-[var(--story-accent)] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Riconnetti Google Drive
-            </button>
-          </div>
-          {!oauthWebAvailable && (
-            <p className="text-xs text-amber-200/90">
-              Per riconnettere da browser serve{" "}
-              <code className="rounded bg-black/20 px-1">GOOGLE_CREDENTIALS_JSON</code> (tipo{" "}
-              <strong>Web application</strong>) e{" "}
-              <code className="rounded bg-black/20 px-1">GOOGLE_REDIRECT_URI</code> nelle env
-              Vercel. In alternativa, in locale:{" "}
-              <code className="rounded bg-black/20 px-1">
-                python3 -m social_automation drive-auth
-              </code>
-              .
-            </p>
-          )}
+      <div
+        className={[
+          "space-y-2 rounded-lg border px-4 py-3 text-sm",
+          hasTokenProblem
+            ? "border-amber-500/50 bg-amber-500/10"
+            : "border-[var(--story-border)] bg-[var(--story-surface)]",
+        ].join(" ")}
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-[var(--story-muted)]">
+            Google Drive: {driveConnectionLabel()}
+            {oauthStatus?.token_source ? ` (sorgente: ${oauthStatus.token_source})` : ""}
+          </span>
+          <button
+            type="button"
+            onClick={handleReconnectGoogle}
+            className="rounded-lg bg-[var(--story-accent)] px-3 py-1.5 text-xs font-semibold text-black"
+          >
+            Riconnetti Google Drive
+          </button>
         </div>
-      )}
+        {!oauthWebAvailable && (
+          <p className="text-xs text-amber-200/90">
+            Se il pulsante non funziona, configura{" "}
+            <code className="rounded bg-black/20 px-1">GOOGLE_CREDENTIALS_JSON</code> (OAuth{" "}
+            <strong>Web application</strong>) e{" "}
+            <code className="rounded bg-black/20 px-1">GOOGLE_REDIRECT_URI</code> su Vercel.
+            In locale:{" "}
+            <code className="rounded bg-black/20 px-1">python3 -m social_automation drive-auth</code>
+            .
+          </p>
+        )}
+        {oauthStatusQuery.isError && (
+          <p className="text-xs text-amber-200/90">
+            Endpoint OAuth non raggiungibile — il deploy potrebbe non essere aggiornato. Verifica{" "}
+            <code className="rounded bg-black/20 px-1">/api/v1/health</code> (campo{" "}
+            <code className="rounded bg-black/20 px-1">api_features</code>).
+          </p>
+        )}
+      </div>
 
       <div className="grid gap-3 md:grid-cols-4">
         <label className="space-y-1 text-sm md:col-span-2">
@@ -314,20 +322,9 @@ export function SelectDrivePage() {
       </div>
 
       {error && (
-        <div className="space-y-2">
-          <p className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm whitespace-pre-wrap break-words text-red-200">
-            {error}
-          </p>
-          {showReconnect && oauthWebAvailable && (
-            <button
-              type="button"
-              onClick={handleReconnectGoogle}
-              className="rounded-lg bg-[var(--story-accent)] px-4 py-2 text-sm font-semibold text-black"
-            >
-              Riconnetti Google Drive
-            </button>
-          )}
-        </div>
+        <p className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm whitespace-pre-wrap break-words text-red-200">
+          {displayError()}
+        </p>
       )}
 
       {!loaded && (

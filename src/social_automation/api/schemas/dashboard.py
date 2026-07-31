@@ -6,12 +6,15 @@ from pydantic import BaseModel, Field
 class HealthResponse(BaseModel):
     status: str = "ok"
     service: str = "social-media-automation-api"
+    api_features: str | None = None
     db_ok: bool | None = None
     db_backend: str | None = None
     db_error: str | None = None
     storage_backend: str | None = None
     blob_configured: bool | None = None
     blob_auth_mode: str | None = None
+    google_oauth_web_configured: bool | None = None
+    google_refresh_configured: bool | None = None
 
 
 class DashboardStatsResponse(BaseModel):
