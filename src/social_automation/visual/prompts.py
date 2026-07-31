@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from social_automation.brand.feedback_learnings import format_feedback_learnings_for_prompt
 from social_automation.brand.kb_scope import KbScope
 from social_automation.brand.loader import (
     build_brand_context_message,
@@ -19,6 +20,7 @@ from social_automation.brand.prompt_context import (
 )
 from social_automation.models import MediaFormat, Platform
 from social_automation.settings import Settings, load_settings, repo_root
+from social_automation.visual.category_skills import format_category_skill_for_image_edit
 from social_automation.visual.models import ImageEditPlan
 
 _IMAGE_EDIT_API_PREAMBLE = (
@@ -284,6 +286,29 @@ def build_image_edit_instructions(settings: Settings | None = None) -> str:
     )
 
 
+def _append_category_and_feedback(
+    prompt: str,
+    *,
+    business_category: str | None,
+    settings: Settings,
+) -> str:
+    parts = [prompt]
+    skill = format_category_skill_for_image_edit(
+        business_category,
+        enabled=settings.visual_category_skills_enabled,
+    )
+    if skill:
+        parts.append(skill)
+    feedback = format_feedback_learnings_for_prompt(
+        business_category,
+        settings=settings,
+        db_path=settings.db_path,
+    )
+    if feedback:
+        parts.append(feedback)
+    return "\n\n".join(parts)
+
+
 def build_image_edit_user_prompt(
     *,
     review: dict,
@@ -323,17 +348,25 @@ def build_image_edit_user_prompt(
                     hybrid_mode=use_hybrid,
                 )
             )
-        return "\n\n".join(parts)
-    return build_visual_producer_user_prompt(
-        review=review,
+        return _append_category_and_feedback(
+            "\n\n".join(parts),
+            business_category=business_category,
+            settings=s,
+        )
+    return _append_category_and_feedback(
+        build_visual_producer_user_prompt(
+            review=review,
+            business_category=business_category,
+            platform=platform,
+            media_format=media_format,
+            content_pillar=content_pillar,
+            marketing_objectives=marketing_objectives,
+            marketing_objective=marketing_objective,
+            channels=channels,
+            include_extras=False,
+        ),
         business_category=business_category,
-        platform=platform,
-        media_format=media_format,
-        content_pillar=content_pillar,
-        marketing_objectives=marketing_objectives,
-        marketing_objective=marketing_objective,
-        channels=channels,
-        include_extras=False,
+        settings=s,
     )
 
 

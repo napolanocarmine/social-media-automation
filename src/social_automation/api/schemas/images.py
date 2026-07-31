@@ -40,6 +40,15 @@ class ImageListResponse(BaseModel):
 
 class ApprovalRequest(BaseModel):
     action: str = Field(description="approve | reject | use_original")
+    reason: str | None = Field(default=None, description="Motivo opzionale (reject / use_original)")
+    tags: list[str] | None = Field(
+        default=None,
+        description="Tag feedback predefiniti (es. logo_altered, too_hdr)",
+    )
+
+
+class ApprovalFeedbackTagsResponse(BaseModel):
+    tags: dict[str, str]
 
 
 class ApprovalResponse(BaseModel):

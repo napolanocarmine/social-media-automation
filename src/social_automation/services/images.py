@@ -6,10 +6,12 @@ import json
 from pathlib import Path
 from typing import Any, Literal
 
+from social_automation.brand.feedback_learnings import normalize_feedback_tags
 from social_automation.db.store import (
     count_ai_output_images,
     count_images_for_manual_publication_review,
     get_image_record,
+    insert_approval_feedback,
     latest_metadata_for_image,
     list_ai_output_images,
     list_images_for_manual_publication_review,
@@ -203,12 +205,34 @@ def list_pending_approval(
     }
 
 
+def _feedback_context_from_image(
+    db_path: Path,
+    *,
+    image_id: int,
+) -> tuple[str | None, str | None]:
+    meta = latest_metadata_for_image(db_path, image_id=image_id)
+    if not meta:
+        return None, None
+    business_category = str(meta.get("business_category") or "").strip() or None
+    visual_method: str | None = None
+    mj_raw = meta.get("metadata_json")
+    try:
+        mj = json.loads(mj_raw) if isinstance(mj_raw, str) else mj_raw
+        if isinstance(mj, dict):
+            visual_method = str(mj.get("visual_method") or "").strip() or None
+    except (ValueError, TypeError):
+        pass
+    return business_category, visual_method
+
+
 def apply_approval_action(
     db_path: Path,
     *,
     image_id: int,
     action: ApprovalAction,
     settings: Settings | None = None,
+    reason: str | None = None,
+    tags: list[str] | None = None,
 ) -> None:
     s = settings or load_settings()
     row = get_image_record(db_path, image_id=image_id)
@@ -217,14 +241,27 @@ def apply_approval_action(
 
     if action == "use_original":
         revert_image_to_original(image_id, settings=s, approve=True)
-        return
-    if action == "approve":
+    elif action == "approve":
         set_image_manual_publication_valid(db_path, image_id=image_id, value=1)
-        return
-    if action == "reject":
+    elif action == "reject":
         set_image_manual_publication_valid(db_path, image_id=image_id, value=0)
-        return
-    raise ValueError(f"Azione non supportata: {action}")
+    else:
+        raise ValueError(f"Azione non supportata: {action}")
+
+    if s.visual_feedback_learning_enabled:
+        business_category, visual_method = _feedback_context_from_image(
+            db_path,
+            image_id=image_id,
+        )
+        insert_approval_feedback(
+            db_path,
+            image_id=image_id,
+            action=action,
+            business_category=business_category,
+            reason=(reason or "").strip() or None,
+            tags=normalize_feedback_tags(tags),
+            visual_method=visual_method,
+        )
 
 
 def list_business_categories() -> list[str]:

@@ -27,6 +27,9 @@ _PROFILE_ENV_KEYS: dict[str, str] = {
     "visual_image_quality": "VISUAL_IMAGE_QUALITY",
     "visual_edit_plan_model": "VISUAL_EDIT_PLAN_MODEL",
     "visual_jpeg_export_quality": "VISUAL_JPEG_EXPORT_QUALITY",
+    "visual_category_skills_enabled": "VISUAL_CATEGORY_SKILLS_ENABLED",
+    "visual_feedback_learning_enabled": "VISUAL_FEEDBACK_LEARNING_ENABLED",
+    "visual_feedback_learning_max_items": "VISUAL_FEEDBACK_LEARNING_MAX_ITEMS",
 }
 
 _PROFILE_PRESETS: dict[str, dict[str, Any]] = {
@@ -48,6 +51,9 @@ _PROFILE_PRESETS: dict[str, dict[str, Any]] = {
         "visual_disable_pillow_retouch": False,
         "visual_image_quality": "high",
         "visual_jpeg_export_quality": 95,
+        "visual_category_skills_enabled": True,
+        "visual_feedback_learning_enabled": True,
+        "visual_feedback_learning_max_items": 5,
     },
     "balanced": {
         "visual_produce_mode": "generative",
@@ -67,6 +73,9 @@ _PROFILE_PRESETS: dict[str, dict[str, Any]] = {
         "visual_disable_pillow_retouch": False,
         "visual_image_quality": "high",
         "visual_jpeg_export_quality": 95,
+        "visual_category_skills_enabled": True,
+        "visual_feedback_learning_enabled": True,
+        "visual_feedback_learning_max_items": 5,
     },
     "quality": {
         "visual_produce_mode": "generative",
@@ -87,6 +96,9 @@ _PROFILE_PRESETS: dict[str, dict[str, Any]] = {
         "visual_image_quality": "high",
         "visual_edit_plan_model": "gpt-4o",
         "visual_jpeg_export_quality": 95,
+        "visual_category_skills_enabled": True,
+        "visual_feedback_learning_enabled": True,
+        "visual_feedback_learning_max_items": 5,
     },
     "pixel": {
         "visual_produce_mode": "pixel",
@@ -106,6 +118,9 @@ _PROFILE_PRESETS: dict[str, dict[str, Any]] = {
         "visual_disable_pillow_retouch": False,
         "visual_image_quality": "",
         "visual_jpeg_export_quality": 95,
+        "visual_category_skills_enabled": True,
+        "visual_feedback_learning_enabled": True,
+        "visual_feedback_learning_max_items": 5,
     },
 }
 

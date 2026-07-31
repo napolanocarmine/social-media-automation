@@ -4,11 +4,13 @@ from fastapi import APIRouter, HTTPException, Query
 
 from social_automation.api.deps import DbPathDep, SettingsDep
 from social_automation.api.schemas.images import (
+    ApprovalFeedbackTagsResponse,
     ApprovalRequest,
     ApprovalResponse,
     ImageListResponse,
     ImageSummary,
 )
+from social_automation.brand.feedback_learnings import APPROVAL_FEEDBACK_TAGS
 from social_automation.api.schemas.plans import GenerateCopyRequest
 from social_automation.models import MediaFormat, Platform
 from social_automation.services.images import (
@@ -80,6 +82,11 @@ def pending_approval_list(
 @router.get("/categories")
 def image_categories() -> dict[str, list[str]]:
     return {"categories": ["tutte", *list_business_categories()]}
+
+
+@router.get("/approval-feedback-tags", response_model=ApprovalFeedbackTagsResponse)
+def approval_feedback_tags() -> ApprovalFeedbackTagsResponse:
+    return ApprovalFeedbackTagsResponse(tags=APPROVAL_FEEDBACK_TAGS)
 
 
 @router.get("/plannable", response_model=ImageListResponse)
@@ -193,7 +200,14 @@ def image_approval(
             detail="action deve essere approve, reject o use_original",
         )
     try:
-        apply_approval_action(db_path, image_id=image_id, action=action_norm, settings=settings)
+        apply_approval_action(
+            db_path,
+            image_id=image_id,
+            action=action_norm,
+            settings=settings,
+            reason=req.reason,
+            tags=req.tags,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:

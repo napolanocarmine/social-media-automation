@@ -465,6 +465,26 @@ class Settings(BaseSettings):
         default=True,
         description="Log strutturato latency per step pipeline (edit plan, image edit, copy).",
     )
+    visual_category_skills_enabled: bool = Field(
+        default=True,
+        description=(
+            "Se true, inietta hint editing per famiglia di categoria (food, staff, locale) "
+            "in edit plan e image edit."
+        ),
+    )
+    visual_feedback_learning_enabled: bool = Field(
+        default=True,
+        description=(
+            "Se true, salva feedback da approvazioni umane e li riusa nei prompt successivi "
+            "per la stessa famiglia di categoria."
+        ),
+    )
+    visual_feedback_learning_max_items: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Numero massimo di feedback recenti da includere nei prompt.",
+    )
 
     dispatch_require_approval: bool = Field(
         default=True,

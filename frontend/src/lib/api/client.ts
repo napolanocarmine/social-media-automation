@@ -37,6 +37,12 @@ export type ImageListResponse = {
 
 export type ApprovalAction = "approve" | "reject" | "use_original";
 
+export type ApprovalPayload = {
+  action: ApprovalAction;
+  reason?: string;
+  tags?: string[];
+};
+
 export type DriveAsset = {
   file_id: string;
   name: string;
@@ -272,15 +278,22 @@ export async function stopBatch(batchId: number, reason?: string): Promise<void>
   );
 }
 
+export async function fetchApprovalFeedbackTags(): Promise<Record<string, string>> {
+  const body = await parseJson<{ tags: Record<string, string> }>(
+    await fetch("/api/v1/images/approval-feedback-tags"),
+  );
+  return body.tags;
+}
+
 export async function postImageApproval(
   imageId: number,
-  action: ApprovalAction,
+  payload: ApprovalPayload,
 ): Promise<{ id: number; approval_status: string }> {
   return parseJson(
     await fetch(`/api/v1/images/${imageId}/approval`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
+      body: JSON.stringify(payload),
     }),
   );
 }

@@ -5,23 +5,66 @@ import { ErrorNotice } from "../components/ErrorNotice";
 import { imageReviewCardClass, imageReviewGridClass } from "../components/imageReviewLayout";
 import { Pagination } from "../components/Pagination";
 import {
+  fetchApprovalFeedbackTags,
   fetchImageCategories,
   fetchPendingApproval,
   postImageApproval,
   type ApprovalAction,
+  type ApprovalPayload,
   type ImageSummary,
 } from "../lib/api/client";
 import { getErrorMessage } from "../lib/api/errors";
 
+type FeedbackDraft = {
+  reason: string;
+  tags: string[];
+};
+
 function ApprovalCard({
   image,
   busy,
+  feedbackTags,
   onAction,
 }: {
   image: ImageSummary;
   busy: boolean;
-  onAction: (action: ApprovalAction) => void;
+  feedbackTags: Record<string, string>;
+  onAction: (payload: ApprovalPayload) => void;
 }) {
+  const [pendingAction, setPendingAction] = useState<ApprovalAction | null>(null);
+  const [draft, setDraft] = useState<FeedbackDraft>({ reason: "", tags: [] });
+
+  const needsFeedback = pendingAction === "reject" || pendingAction === "use_original";
+
+  const toggleTag = (tag: string) => {
+    setDraft((prev) => ({
+      ...prev,
+      tags: prev.tags.includes(tag)
+        ? prev.tags.filter((t) => t !== tag)
+        : [...prev.tags, tag],
+    }));
+  };
+
+  const resetFeedback = () => {
+    setPendingAction(null);
+    setDraft({ reason: "", tags: [] });
+  };
+
+  const submitDirect = (action: ApprovalAction) => {
+    onAction({ action });
+    resetFeedback();
+  };
+
+  const submitWithFeedback = () => {
+    if (!pendingAction) return;
+    onAction({
+      action: pendingAction,
+      reason: draft.reason.trim() || undefined,
+      tags: draft.tags.length > 0 ? draft.tags : undefined,
+    });
+    resetFeedback();
+  };
+
   return (
     <article className={imageReviewCardClass}>
       <h3
@@ -32,30 +75,89 @@ function ApprovalCard({
       </h3>
       <ImageCompare image={image} compact />
       <div className="mt-2 grid grid-cols-1 gap-1">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onAction("approve")}
-          className="rounded-md bg-[var(--story-accent)] px-2 py-1.5 text-xs font-semibold text-black disabled:opacity-50"
-        >
-          Approva ritocco
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onAction("use_original")}
-          className="rounded-md border border-[var(--story-border)] px-2 py-1.5 text-xs disabled:opacity-50"
-        >
-          Usa originale
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onAction("reject")}
-          className="rounded-md border border-red-500/40 px-2 py-1.5 text-xs text-red-200 disabled:opacity-50"
-        >
-          Rifiuta
-        </button>
+        {!needsFeedback && (
+          <>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => submitDirect("approve")}
+              className="rounded-md bg-[var(--story-accent)] px-2 py-1.5 text-xs font-semibold text-black disabled:opacity-50"
+            >
+              Approva ritocco
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setPendingAction("use_original")}
+              className="rounded-md border border-[var(--story-border)] px-2 py-1.5 text-xs disabled:opacity-50"
+            >
+              Usa originale
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setPendingAction("reject")}
+              className="rounded-md border border-red-500/40 px-2 py-1.5 text-xs text-red-200 disabled:opacity-50"
+            >
+              Rifiuta
+            </button>
+          </>
+        )}
+
+        {needsFeedback && (
+          <div className="space-y-2 rounded-md border border-[var(--story-border)] bg-[var(--story-bg)] p-2">
+            <p className="text-xs text-[var(--story-muted)]">
+              {pendingAction === "reject"
+                ? "Perché rifiuti il ritocco?"
+                : "Perché preferisci l'originale?"}
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(feedbackTags).map(([key, label]) => (
+                <label
+                  key={key}
+                  className={`cursor-pointer rounded border px-1.5 py-0.5 text-[10px] ${
+                    draft.tags.includes(key)
+                      ? "border-[var(--story-accent)] text-[var(--story-accent)]"
+                      : "border-[var(--story-border)] text-[var(--story-muted)]"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={draft.tags.includes(key)}
+                    onChange={() => toggleTag(key)}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <textarea
+              value={draft.reason}
+              onChange={(e) => setDraft((prev) => ({ ...prev, reason: e.target.value }))}
+              placeholder="Note aggiuntive (opzionale)"
+              rows={2}
+              className="w-full rounded border border-[var(--story-border)] bg-transparent px-2 py-1 text-xs"
+            />
+            <div className="grid grid-cols-2 gap-1">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={resetFeedback}
+                className="rounded-md border border-[var(--story-border)] px-2 py-1.5 text-xs disabled:opacity-50"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={submitWithFeedback}
+                className="rounded-md bg-[var(--story-accent)] px-2 py-1.5 text-xs font-semibold text-black disabled:opacity-50"
+              >
+                Conferma
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </article>
   );
@@ -73,6 +175,11 @@ export function ApprovePage() {
     queryFn: fetchImageCategories,
   });
 
+  const feedbackTagsQuery = useQuery({
+    queryKey: ["images", "approval-feedback-tags"],
+    queryFn: fetchApprovalFeedbackTags,
+  });
+
   const listQuery = useQuery({
     queryKey: ["images", "pending-approval", platform, format, category, page],
     queryFn: () =>
@@ -80,8 +187,8 @@ export function ApprovePage() {
   });
 
   const mutation = useMutation({
-    mutationFn: ({ id, action }: { id: number; action: ApprovalAction }) =>
-      postImageApproval(id, action),
+    mutationFn: ({ id, payload }: { id: number; payload: ApprovalPayload }) =>
+      postImageApproval(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["images"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
@@ -89,6 +196,7 @@ export function ApprovePage() {
   });
 
   const categories = categoriesQuery.data?.categories ?? ["tutte"];
+  const feedbackTags = feedbackTagsQuery.data ?? {};
 
   return (
     <div className="space-y-6">
@@ -96,6 +204,7 @@ export function ApprovePage() {
         <h2 className="text-2xl font-semibold">③ Approva foto</h2>
         <p className="mt-1 text-[var(--story-muted)]">
           Controlla il ritocco. Solo le immagini approvate compaiono in pianificazione.
+          Rifiuti e «usa originale» alimentano l&apos;apprendimento AI per categoria.
         </p>
       </header>
 
@@ -176,7 +285,8 @@ export function ApprovePage() {
             key={image.id}
             image={image}
             busy={mutation.isPending}
-            onAction={(action) => mutation.mutate({ id: image.id, action })}
+            feedbackTags={feedbackTags}
+            onAction={(payload) => mutation.mutate({ id: image.id, payload })}
           />
         ))}
       </div>

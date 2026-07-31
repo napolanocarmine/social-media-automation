@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from social_automation.brand.feedback_learnings import format_feedback_learnings_for_prompt
 from social_automation.brand.kb_scope import KbScope
 from social_automation.brand.loader import (
     build_system_message,
@@ -18,6 +19,7 @@ from social_automation.brand.prompt_context import (
 )
 from social_automation.models import MediaFormat, Platform
 from social_automation.settings import Settings
+from social_automation.visual.category_skills import format_category_skill_for_edit_plan
 from social_automation.visual.models import ImageEditPlan
 
 
@@ -67,6 +69,29 @@ def build_image_edit_plan_user_prompt(
     )
 
 
+def _enrich_edit_plan_prompt(
+    user: str,
+    *,
+    settings: Settings,
+    business_category: str | None,
+) -> str:
+    parts = [user]
+    skill = format_category_skill_for_edit_plan(
+        business_category,
+        enabled=settings.visual_category_skills_enabled,
+    )
+    if skill:
+        parts.append(skill)
+    feedback = format_feedback_learnings_for_prompt(
+        business_category,
+        settings=settings,
+        db_path=settings.db_path,
+    )
+    if feedback:
+        parts.append(feedback)
+    return "\n\n".join(parts)
+
+
 def run_image_edit_plan(
     image_path: Path,
     *,
@@ -89,6 +114,11 @@ def run_image_edit_plan(
         media_format=media_format,
         content_pillar=pillar,
         channels=channels,
+    )
+    user = _enrich_edit_plan_prompt(
+        user,
+        settings=settings,
+        business_category=business_category,
     )
     cfg = load_story_agent_config()
     data = chat_vision_json(

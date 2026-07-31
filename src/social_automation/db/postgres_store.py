@@ -79,7 +79,26 @@ def _table_columns(conn: psycopg.Connection, table_name: str) -> set[str]:
 def ensure_db_schema(db_path: Path) -> None:
     del db_path
     with _connect() as conn:
-        conn.execute("SELECT 1")
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS approval_feedback (
+                id SERIAL PRIMARY KEY,
+                image_id INTEGER NOT NULL REFERENCES images(id) ON DELETE CASCADE,
+                action TEXT NOT NULL,
+                business_category TEXT NULL,
+                reason TEXT NULL,
+                tags_json TEXT NULL,
+                visual_method TEXT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_approval_feedback_category
+            ON approval_feedback(business_category);
+            """
+        )
 
 
 def truncate_all_tables_for_tests(db_path: Path | None = None) -> None:
@@ -89,6 +108,7 @@ def truncate_all_tables_for_tests(db_path: Path | None = None) -> None:
         conn.execute(
             """
             TRUNCATE TABLE
+                approval_feedback,
                 batch_items,
                 story_schedule_occurrences,
                 story_schedule_rules,
@@ -800,6 +820,92 @@ def has_source_asset_render_for_platform(
             (sid, platform.value, MediaFormat.POST.value, fmt),
         ).fetchone()
     return row is not None
+
+
+def insert_approval_feedback(
+    db_path: Path,
+    *,
+    image_id: int,
+    action: str,
+    business_category: str | None = None,
+    reason: str | None = None,
+    tags: list[str] | None = None,
+    visual_method: str | None = None,
+) -> None:
+    """Registra feedback umano su approvazione/rifiuto ritocco."""
+    ensure_db_schema(db_path)
+    tags_text = json.dumps(tags or [], ensure_ascii=False)
+    with _connect(db_path) as conn:
+        conn.execute(
+            """
+            INSERT INTO approval_feedback(
+                image_id, action, business_category, reason, tags_json, visual_method
+            ) VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (
+                int(image_id),
+                (action or "").strip().lower(),
+                (business_category or "").strip().lower() or None,
+                (reason or "").strip() or None,
+                tags_text,
+                (visual_method or "").strip() or None,
+            ),
+        )
+
+
+def get_feedback_learnings_for_category(
+    db_path: Path,
+    *,
+    categories: list[str] | None = None,
+    limit: int = 5,
+) -> list[dict[str, Any]]:
+    """Ultimi feedback utili per prompt (priorità reject / use_original)."""
+    ensure_db_schema(db_path)
+    lim = max(1, int(limit))
+    cats = [(c or "").strip().lower() for c in (categories or []) if (c or "").strip()]
+    sql = """
+    SELECT action, reason, tags_json, business_category, created_at
+    FROM approval_feedback
+    """
+    params: list[Any] = []
+    if cats:
+        placeholders = ", ".join("%s" for _ in cats)
+        sql += f" WHERE LOWER(COALESCE(business_category, '')) IN ({placeholders})"
+        params.extend(cats)
+    sql += """
+    ORDER BY
+        CASE action
+            WHEN 'reject' THEN 0
+            WHEN 'use_original' THEN 1
+            ELSE 2
+        END,
+        id DESC
+    LIMIT %s
+    """
+    params.append(lim)
+    with _connect(db_path) as conn:
+        rows = conn.execute(sql, tuple(params)).fetchall()
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        tags_raw = row["tags_json"]
+        tags: list[str] = []
+        if tags_raw:
+            try:
+                parsed = json.loads(tags_raw)
+                if isinstance(parsed, list):
+                    tags = [str(t) for t in parsed if str(t).strip()]
+            except (ValueError, TypeError):
+                tags = []
+        out.append(
+            {
+                "action": row["action"],
+                "reason": row["reason"],
+                "tags": tags,
+                "business_category": row["business_category"],
+                "created_at": row["created_at"],
+            }
+        )
+    return out
 
 
 def latest_metadata_for_image(
