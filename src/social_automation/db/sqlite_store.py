@@ -347,6 +347,23 @@ def ensure_db_schema(db_path: Path) -> None:
         if "media_format" not in cols:
             conn.execute("ALTER TABLE metadata ADD COLUMN media_format TEXT NULL")
         _create_approval_feedback_table(conn)
+        _create_oauth_tokens_table(conn)
+
+
+def _create_oauth_tokens_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS oauth_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            provider TEXT NOT NULL UNIQUE,
+            refresh_token TEXT NOT NULL,
+            access_token TEXT NULL,
+            expires_at TEXT NULL,
+            scopes TEXT NULL,
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        """
+    )
 
 
 def _create_approval_feedback_table(conn: sqlite3.Connection) -> None:
@@ -1149,6 +1166,57 @@ def get_feedback_learnings_for_category(
             }
         )
     return out
+
+
+def upsert_oauth_token(
+    db_path: Path,
+    *,
+    provider: str,
+    refresh_token: str,
+    access_token: str | None = None,
+    expires_at: str | None = None,
+    scopes: str | None = None,
+) -> None:
+    """Salva o aggiorna refresh token OAuth (es. google_drive)."""
+    ensure_db_schema(db_path)
+    prov = (provider or "").strip().lower()
+    token = (refresh_token or "").strip()
+    if not prov or not token:
+        raise ValueError("provider e refresh_token richiesti")
+    with _connect(db_path) as conn:
+        conn.execute(
+            """
+            INSERT INTO oauth_tokens(provider, refresh_token, access_token, expires_at, scopes)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(provider) DO UPDATE SET
+                refresh_token = excluded.refresh_token,
+                access_token = COALESCE(excluded.access_token, oauth_tokens.access_token),
+                expires_at = COALESCE(excluded.expires_at, oauth_tokens.expires_at),
+                scopes = COALESCE(excluded.scopes, oauth_tokens.scopes),
+                updated_at = datetime('now')
+            """,
+            (
+                prov,
+                token,
+                (access_token or "").strip() or None,
+                (expires_at or "").strip() or None,
+                (scopes or "").strip() or None,
+            ),
+        )
+
+
+def get_oauth_refresh_token(db_path: Path, *, provider: str) -> str | None:
+    ensure_db_schema(db_path)
+    prov = (provider or "").strip().lower()
+    with _connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT refresh_token FROM oauth_tokens WHERE provider = ?",
+            (prov,),
+        ).fetchone()
+    if not row:
+        return None
+    token = str(row["refresh_token"] or "").strip()
+    return token or None
 
 
 def latest_metadata_for_image(

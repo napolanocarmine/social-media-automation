@@ -8,6 +8,7 @@ from social_automation.api.schemas.drive_batches import (
     DriveAssetListResponse,
     DriveAssetSummary,
 )
+from social_automation.drive.errors import http_error_from_google_auth
 from social_automation.services.batch_runner import serialize_drive_asset
 from social_automation.services.drive_selection import (
     load_drive_assets_for_selection,
@@ -42,6 +43,9 @@ def list_drive_assets(
             open_browser=False,
         )
     except Exception as exc:
+        auth_error = http_error_from_google_auth(exc)
+        if auth_error is not None:
+            raise auth_error from exc
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     total = len(assets)

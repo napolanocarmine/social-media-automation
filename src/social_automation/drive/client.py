@@ -11,6 +11,7 @@ from typing import Any
 from googleapiclient.http import MediaIoBaseDownload
 
 from social_automation.drive.auth import build_drive_service
+from social_automation.drive.token_store import resolve_google_refresh_token
 from social_automation.models import DriveAsset
 
 _IMAGE_MIME_PREFIX = "image/"
@@ -42,7 +43,7 @@ class DriveClient:
     @classmethod
     def from_settings(cls, settings, *, open_browser: bool = True) -> DriveClient:
         creds_json = (getattr(settings, "google_credentials_json", "") or "").strip()
-        refresh = (getattr(settings, "google_refresh_token", "") or "").strip()
+        refresh = resolve_google_refresh_token(settings, db_path=getattr(settings, "db_path", None))
         if creds_json and refresh:
             service = build_drive_service(
                 settings.google_credentials_path,
@@ -66,7 +67,8 @@ class DriveClient:
                 + ". Genera .env.vercel.import con scripts/generate_vercel_env.py "
                 "e importalo in Vercel → Environment Variables. "
                 "Refresh token: `python3 -m social_automation drive-auth` in locale, "
-                "oppure GET /api/v1/oauth/google/start (client OAuth Web)."
+                "oppure apri «Riconnetti Google Drive» nella pagina Seleziona "
+                "(GET /api/v1/oauth/google/start)."
             )
         oauth_browser = (settings.google_oauth_browser or "").strip() or None
         return cls.from_paths(

@@ -1,15 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Pagination } from "../components/Pagination";
 import {
   driveThumbnailUrl,
   fetchDriveAssets,
+  fetchGoogleOAuthStatus,
   fetchImageCategories,
   fetchMarketingObjectives,
+  googleDriveReconnectUrl,
   startAiBatch,
   type DriveAsset,
 } from "../lib/api/client";
+import { getErrorMessage, isGoogleTokenError } from "../lib/api/errors";
 
 const MONTHS_IT = [
   "Gennaio",
@@ -29,6 +32,7 @@ const MONTHS_IT = [
 export function SelectDrivePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const now = new Date();
 
   const categoriesQuery = useQuery({
@@ -48,6 +52,24 @@ export function SelectDrivePage() {
   const [format, setFormat] = useState("post");
   const [objectives, setObjectives] = useState<string[]>(["Engagement"]);
   const [error, setError] = useState<string | null>(null);
+  const [tokenError, setTokenError] = useState(false);
+  const [oauthNotice, setOauthNotice] = useState<string | null>(null);
+
+  const oauthStatusQuery = useQuery({
+    queryKey: ["oauth", "google", "status"],
+    queryFn: fetchGoogleOAuthStatus,
+  });
+
+  useEffect(() => {
+    if (searchParams.get("google") === "connected") {
+      setOauthNotice("Google Drive riconnesso. Puoi caricare le immagini.");
+      setTokenError(false);
+      setError(null);
+      queryClient.invalidateQueries({ queryKey: ["oauth", "google", "status"] });
+      searchParams.delete("google");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [queryClient, searchParams, setSearchParams]);
 
   const objectivesQuery = useQuery({
     queryKey: ["config", "marketing-objectives"],
@@ -88,9 +110,11 @@ export function SelectDrivePage() {
       setPage(0);
       setLoaded(true);
       setError(null);
+      setTokenError(false);
     },
     onError: (err) => {
-      setError(err instanceof Error ? err.message : "Errore caricamento Drive");
+      setTokenError(isGoogleTokenError(err));
+      setError(getErrorMessage(err, "Errore caricamento Drive"));
     },
   });
 
@@ -140,6 +164,17 @@ export function SelectDrivePage() {
     setSelectedIds(new Set());
   }
 
+  const oauthStatus = oauthStatusQuery.data;
+  const showReconnect =
+    tokenError ||
+    oauthStatus?.token_valid === false ||
+    (oauthStatus?.credentials_configured === true &&
+      !oauthStatus?.refresh_token_configured);
+
+  function handleReconnectGoogle() {
+    window.location.href = googleDriveReconnectUrl();
+  }
+
   return (
     <div className="space-y-6">
       <header>
@@ -148,6 +183,33 @@ export function SelectDrivePage() {
           Carica le foto da Drive, seleziona quelle da passare a Story AI e avvia la coda.
         </p>
       </header>
+
+      {oauthNotice && (
+        <p className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+          {oauthNotice}
+        </p>
+      )}
+
+      {oauthStatus?.credentials_configured && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--story-border)] bg-[var(--story-surface)] px-4 py-3 text-sm">
+          <span className="text-[var(--story-muted)]">
+            Google Drive:{" "}
+            {oauthStatus.token_valid === true && "connesso"}
+            {oauthStatus.token_valid === false && "token scaduto o revocato"}
+            {oauthStatus.token_valid === null &&
+              (oauthStatus.refresh_token_configured
+                ? "token configurato"
+                : "non connesso")}
+          </span>
+          <button
+            type="button"
+            onClick={handleReconnectGoogle}
+            className="rounded-lg border border-[var(--story-accent)] px-3 py-1.5 text-xs font-medium text-[var(--story-accent)]"
+          >
+            Riconnetti Google Drive
+          </button>
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-4">
         <label className="space-y-1 text-sm md:col-span-2">
@@ -220,9 +282,20 @@ export function SelectDrivePage() {
       </div>
 
       {error && (
-        <p className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm whitespace-pre-wrap break-words text-red-200">
-          {error}
-        </p>
+        <div className="space-y-2">
+          <p className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm whitespace-pre-wrap break-words text-red-200">
+            {error}
+          </p>
+          {showReconnect && (
+            <button
+              type="button"
+              onClick={handleReconnectGoogle}
+              className="rounded-lg bg-[var(--story-accent)] px-4 py-2 text-sm font-semibold text-black"
+            >
+              Riconnetti Google Drive
+            </button>
+          )}
+        </div>
       )}
 
       {!loaded && (

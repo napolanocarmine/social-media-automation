@@ -160,7 +160,18 @@ export type PlanActionResponse = {
 async function parseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const text = await response.text();
-    throw new ApiError(formatApiErrorBody(response.status, text), response.status);
+    let code: string | undefined;
+    try {
+      const parsed = JSON.parse(text) as { detail?: unknown };
+      const detail = parsed.detail;
+      if (detail && typeof detail === "object" && detail !== null && "code" in detail) {
+        const obj = detail as { code?: unknown; message?: unknown };
+        if (typeof obj.code === "string") code = obj.code;
+      }
+    } catch {
+      // ignore
+    }
+    throw new ApiError(formatApiErrorBody(response.status, text), response.status, code);
   }
   return response.json() as Promise<T>;
 }
@@ -209,6 +220,22 @@ export async function fetchPendingApproval(params: {
 
 export async function fetchImageCategories(): Promise<{ categories: string[] }> {
   return parseJson(await fetch("/api/v1/config/categories"));
+}
+
+export type GoogleOAuthStatus = {
+  credentials_configured: boolean;
+  refresh_token_configured: boolean;
+  token_valid: boolean | null;
+  reconnect_url: string;
+  token_source: string | null;
+};
+
+export async function fetchGoogleOAuthStatus(): Promise<GoogleOAuthStatus> {
+  return parseJson(await fetch("/api/v1/oauth/google/status"));
+}
+
+export function googleDriveReconnectUrl(): string {
+  return "/api/v1/oauth/google/start";
 }
 
 export async function fetchDriveAssets(params: {

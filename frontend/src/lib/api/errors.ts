@@ -1,10 +1,12 @@
 export class ApiError extends Error {
   readonly status: number;
+  readonly code?: string;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -22,6 +24,10 @@ function formatFastApiDetail(detail: unknown): string {
       .join("\n");
   }
   if (detail && typeof detail === "object") {
+    const obj = detail as { code?: unknown; message?: unknown };
+    if (typeof obj.message === "string" && obj.message.trim()) {
+      return obj.message;
+    }
     return JSON.stringify(detail, null, 2);
   }
   return String(detail);
@@ -44,6 +50,23 @@ export function formatApiErrorBody(status: number, body: string): string {
   }
 
   return trimmed;
+}
+
+export function isGoogleTokenError(error: unknown): boolean {
+  if (error instanceof ApiError) {
+    if (error.code === "google_token_expired") return true;
+    const msg = error.message.toLowerCase();
+    return msg.includes("invalid_grant") || msg.includes("scaduta o revocata");
+  }
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    return (
+      msg.includes("invalid_grant") ||
+      msg.includes("token has been expired or revoked") ||
+      msg.includes("scaduta o revocata")
+    );
+  }
+  return false;
 }
 
 export function getErrorMessage(error: unknown, fallback: string): string {
