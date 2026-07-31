@@ -12,7 +12,12 @@ from google_auth_oauthlib.flow import Flow
 from social_automation.api.deps import DbPathDep, SettingsDep
 from social_automation.drive.auth import SCOPES, get_credentials_from_env
 from social_automation.drive.oauth_redirect import resolve_google_oauth_redirect_uri
-from social_automation.drive.oauth_state import create_signed_oauth_state, verify_signed_oauth_state
+from social_automation.drive.oauth_state import (
+    create_signed_oauth_state,
+    generate_code_challenge,
+    generate_code_verifier,
+    parse_signed_oauth_state,
+)
 from social_automation.drive.token_store import GOOGLE_DRIVE_PROVIDER, resolve_google_refresh_token
 from social_automation.db.store import upsert_oauth_token
 
@@ -55,8 +60,16 @@ def google_oauth_start(settings: SettingsDep, request: Request):
         scopes=list(SCOPES),
         redirect_uri=redirect_uri,
     )
-    state = create_signed_oauth_state(settings)
-    auth_url, _ = flow.authorization_url(access_type="offline", prompt="consent", state=state)
+    code_verifier = generate_code_verifier()
+    code_challenge = generate_code_challenge(code_verifier)
+    state = create_signed_oauth_state(settings, code_verifier=code_verifier)
+    auth_url, _ = flow.authorization_url(
+        access_type="offline",
+        prompt="consent",
+        state=state,
+        code_challenge=code_challenge,
+        code_challenge_method="S256",
+    )
     return RedirectResponse(auth_url)
 
 
@@ -68,8 +81,12 @@ def google_oauth_callback(
     db_path: DbPathDep,
     request: Request,
 ):
-    if not verify_signed_oauth_state(settings, state):
+    payload = parse_signed_oauth_state(settings, state)
+    if payload is None:
         raise HTTPException(status_code=400, detail="State OAuth non valido o scaduto")
+    code_verifier = str(payload.get("cv") or "").strip()
+    if not code_verifier:
+        raise HTTPException(status_code=400, detail="PKCE code_verifier mancante — riprova da /start")
     config = _oauth_client_config(settings)
     redirect_uri = resolve_google_oauth_redirect_uri(settings, request=request)
     flow = Flow.from_client_config(
@@ -77,7 +94,11 @@ def google_oauth_callback(
         scopes=list(SCOPES),
         redirect_uri=redirect_uri,
     )
-    flow.fetch_token(code=code)
+    try:
+        flow.fetch_token(code=code, code_verifier=code_verifier)
+    except Exception as exc:
+        msg = str(exc).strip() or exc.__class__.__name__
+        raise HTTPException(status_code=400, detail=msg) from exc
     refresh = flow.credentials.refresh_token or ""
     if not refresh:
         raise HTTPException(

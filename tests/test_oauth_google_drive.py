@@ -21,8 +21,13 @@ def test_signed_oauth_state_roundtrip() -> None:
         cron_secret="test-secret",
         google_credentials_json='{"web":{"client_id":"x"}}',
     )
-    state = create_signed_oauth_state(settings)
+    state = create_signed_oauth_state(settings, code_verifier="pkce-verifier-abc")
+    from social_automation.drive.oauth_state import parse_signed_oauth_state, verify_signed_oauth_state
+
     assert verify_signed_oauth_state(settings, state)
+    payload = parse_signed_oauth_state(settings, state)
+    assert payload is not None
+    assert payload.get("cv") == "pkce-verifier-abc"
 
 
 def test_oauth_token_upsert_and_resolve(tmp_path) -> None:
