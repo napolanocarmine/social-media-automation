@@ -10,14 +10,32 @@ from social_automation.visual.models import ImageEditPlan
 
 _LOG = logging.getLogger(__name__)
 
-_COMPILER_SYSTEM = (
+_COMPILER_SYSTEM_BASE = (
     "You optimize prompts for OpenAI gpt-image-1.5 in EDIT mode (not generation). "
-    "The model must preserve the original photograph: faces, logos, flags, food shape, "
-    "background bokeh. Output ONLY the final English prompt for the image tool — no preamble, "
+    "The model must preserve faces, logos, flags, food shape, background bokeh. "
+    "Output ONLY the final English prompt for the image tool — no preamble, "
     "no markdown, no JSON. Keep all preserve/forbid rules. Be specific about selective "
-    "sharpness targets. If the input says crop is already done, do NOT ask for cropping. "
-    "If tone/exposure is handled separately, do NOT ask for global brightness changes."
+    "sharpness targets."
 )
+
+
+def _compiler_system_message(settings: Settings) -> str:
+    parts = [_COMPILER_SYSTEM_BASE]
+    if settings.visual_precrop_before_api:
+        parts.append(
+            "If the input says crop is already done, do NOT ask for cropping."
+        )
+    if settings.visual_hybrid_tone_pipeline:
+        parts.append(
+            "If tone/exposure is handled separately in post, "
+            "do NOT ask for global brightness changes."
+        )
+    else:
+        parts.append(
+            "Include explicit global exposure/contrast/saturation adjustments "
+            "when the draft mentions them — the image model applies tone, not Pillow."
+        )
+    return " ".join(parts)
 
 
 def compile_image_edit_prompt(
@@ -56,7 +74,7 @@ def compile_image_edit_prompt(
     )
     try:
         compiled = chat_text(
-            system_message=_COMPILER_SYSTEM,
+            system_message=_compiler_system_message(settings),
             user_prompt=user,
             api_key=settings.vision_api_key,
             model=compiler_model,

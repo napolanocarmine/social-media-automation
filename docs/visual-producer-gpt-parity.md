@@ -135,10 +135,9 @@ Il GPT **non** usa etichette fisse per categoria: decide dopo l'analisi.
 | Template prompt editing | ✅ Allineato al GPT | `config/brand/image_edit_task_prompt.md` |
 | KB brand nelle instructions | ✅ | `VISUAL_EDIT_INCLUDE_KB=true` |
 | `action: edit` forzato | ✅ | `responses_image.py` |
-| `input_fidelity: high` | ✅ | `.env` |
-| `quality: high` | ✅ | `.env` |
-| Size API dinamica per `crop_mode` | ✅ | `image_api_size_for_crop()` |
-| Post-crop Pillow di sicurezza | ✅ | `VISUAL_SKIP_POST_CROP=false` |
+| `input_fidelity: low` | ✅ (profilo quality) | `.env` / preset |
+| Post-crop Pillow | ❌ disabilitato in quality | `VISUAL_SKIP_POST_CROP=true` |
+| Pre-crop Pillow | ❌ disabilitato in quality | `VISUAL_PRECROP_BEFORE_API=false` |
 | Formato prompt parametrico per canale | ✅ | `image_edit_format_label()` |
 
 ### Ancora mancante (causa del gap qualitativo)
@@ -465,24 +464,24 @@ Allineamento consigliato (già in gran parte applicato):
 | Mainline | `gpt-5.5` | `VISUAL_RESPONSES_MODEL` |
 | Image model | `gpt-image-1.5` | Non `gpt-image-2` (rigenera di più) |
 | `action` | **`edit`** | Mai `auto` in produzione |
-| `input_fidelity` | **`high`** | Preserva volti, loghi, bandierine |
+| `input_fidelity` | **`low`** (profilo quality) | Edit più visibile; `high` preserva pixel originali |
 | `quality` | **`high`** | |
 | `output_format` | `jpeg` | GPT dichiara JPEG finale |
 | `size` | dinamico per `crop_mode` | Vedi tabella sotto |
 
 ### Size API per crop_mode
 
-`gpt-image-1.5` supporta solo **1:1, 2:3, 3:2** o **`auto`** — non esiste un 4:5 nativo (`1024×1280`). Per Instagram/Facebook usare **`auto`** dopo un **pre-crop deterministico** della sorgente al ratio target (`precrop_source_for_api`).
+`gpt-image-1.5` supporta **1:1, 2:3, 3:2** o **`auto`**. Con **`VISUAL_PRECROP_BEFORE_API=false`** e **`VISUAL_SKIP_POST_CROP=true`**, crop e tono (esposizione/contrasto) sono demandati all'**edit AI** nel prompt — niente pre/post crop Pillow.
 
 | crop_mode | Formato finale | size API | Pre-crop sorgente |
 |-----------|----------------|----------|-------------------|
-| `instagram_4_5` | 1080×1350 | `auto` | sì (4:5) |
-| `story_9_16` | 1080×1920 | `1024x1792` | opzionale |
-| `facebook_context` | 1200×900 | `auto` | sì (4:3) |
+| `instagram_4_5` | 1080×1350 | `auto` | no (AI crop) |
+| `story_9_16` | 1080×1920 | `auto` | no |
+| `facebook_context` | 1200×900 | `auto` | no |
 
 Override globale solo se necessario: `VISUAL_IMAGE_SIZE=...`
 
-Post-process Pillow (`finalize_image_for_crop_mode`) porta alle dimensioni esatte in pixel. Con pre-crop + `auto`, il post-process dovrebbe fare **solo resize**, non center crop.
+Se serve normalizzazione pixel esatta in post, impostare `VISUAL_SKIP_POST_CROP=false` (Pillow resize/crop di sicurezza).
 
 ### Center crop ≠ luci/colori
 
@@ -519,19 +518,21 @@ VISUAL_DISABLE_PILLOW_RETOUCH=true
 VISUAL_PRODUCE_MODE=generative
 VISUAL_REVIEW_ENABLED=false
 
-# Parità GPT (già applicato)
+# Parità GPT — pipeline AI-only (profilo quality)
 VISUAL_EDIT_INCLUDE_KB=true
-VISUAL_SKIP_POST_CROP=false
+VISUAL_SKIP_POST_CROP=true
+VISUAL_PRECROP_BEFORE_API=false
 VISUAL_IMAGE_BACKEND=responses
 VISUAL_RESPONSES_MODEL=gpt-5.5
 VISUAL_RESPONSES_IMAGE_MODEL=gpt-image-1.5
-VISUAL_IMAGE_INPUT_FIDELITY=high
+VISUAL_IMAGE_INPUT_FIDELITY=low
 VISUAL_IMAGE_QUALITY=high
 VISUAL_IMAGE_SIZE=
+VISUAL_DISABLE_PILLOW_RETOUCH=true
+VISUAL_HYBRID_TONE_PIPELINE=false
 
 # Edit plan (vision pre-edit)
 VISUAL_EDIT_PLAN_ENABLED=true
-VISUAL_PRECROP_BEFORE_API=true
 VISUAL_JPEG_EXPORT_QUALITY=95
 # VISUAL_EDIT_DEBUG_LOG=false
 ```
@@ -568,7 +569,7 @@ Per ogni test A/B (GPT vs tool), stessa foto e stesso `platform` + `media_format
 
 ### Tecnici
 
-- [ ] Log contiene `action=edit`, `input_fidelity=high`, `crop` e `size` attesi
+- [ ] Log contiene `action=edit`, `input_fidelity=low` (o override env), `crop` e `size` attesi
 - [ ] `method=ai_edited` in metadata batch
 - [ ] Docker ricostruito dopo deploy (`docker compose up --build`)
 

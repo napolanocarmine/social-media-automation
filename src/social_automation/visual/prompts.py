@@ -99,10 +99,16 @@ def format_edit_plan_for_prompt(
     adjustments = plan.adjustments_notes or "lieve esposizione, ombre e contrasto come da regole"
     la = plan.light_adjustments
     if la.has_tone:
-        tone_line = (
-            f"exposure={la.exposure:+.3f}, contrast={la.contrast:+.3f}, "
-            f"saturation={la.saturation:+.3f} (applicati in post, non dall'AI)"
-        )
+        if hybrid_mode:
+            tone_line = (
+                f"exposure={la.exposure:+.3f}, contrast={la.contrast:+.3f}, "
+                f"saturation={la.saturation:+.3f} (applicati in post, non dall'AI)"
+            )
+        else:
+            tone_line = (
+                f"exposure={la.exposure:+.3f}, contrast={la.contrast:+.3f}, "
+                f"saturation={la.saturation:+.3f} — applica tu nell'edit (contrasto/esposizione AI)"
+            )
     else:
         tone_line = adjustments
 

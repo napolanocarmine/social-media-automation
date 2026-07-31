@@ -300,10 +300,11 @@ class Settings(BaseSettings):
         description="Dimensione output image edit (opzionale). Preferire vuoto/auto per preservare la foto originale.",
     )
     visual_image_input_fidelity: str = Field(
-        default="high",
+        default="low",
         description=(
             "input_fidelity per gpt-image-1/1.5 (Responses tool o images_edits). "
-            "Preserva loghi/volti. Non usato con gpt-image-2."
+            "low = edit più visibile (generazione parziale); high = preserva pixel originali. "
+            "Non usato con gpt-image-2."
         ),
     )
     visual_image_quality: str = Field(
@@ -351,8 +352,8 @@ class Settings(BaseSettings):
     visual_skip_post_crop: bool = Field(
         default=False,
         description=(
-            "Se false (default), normalizza dimensioni con crop Pillow dopo l'API. "
-            "Se true, output API usato così com'è."
+            "Se false (default globale), normalizza dimensioni con crop Pillow dopo l'API. "
+            "Se true, output API usato così com'è (crop/tono demandati all'edit AI)."
         ),
     )
     visual_edit_plan_enabled: bool = Field(

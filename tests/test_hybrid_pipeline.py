@@ -36,6 +36,24 @@ def test_image_edit_plan_nested_light_adjustments() -> None:
     assert "light_adjustments" in plan.to_dict()
 
 
+def test_format_edit_plan_non_hybrid_tone_for_ai() -> None:
+    plan = ImageEditPlan.from_dict(
+        {
+            "subjects": ["hamburger"],
+            "light_adjustments": {"exposure": 0.08, "contrast": 0.04},
+        }
+    )
+    text = format_edit_plan_for_prompt(
+        plan,
+        platform=Platform.INSTAGRAM,
+        media_format=MediaFormat.POST,
+        hybrid_mode=False,
+    )
+    assert "applica tu nell'edit" in text
+    assert "applicati in post" not in text
+    assert "Crop al formato" in text
+
+
 def test_format_edit_plan_hybrid_mode() -> None:
     plan = ImageEditPlan.from_dict(
         {

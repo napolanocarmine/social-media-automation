@@ -11,7 +11,9 @@ def test_quality_profile_enables_gpt_parity_flags() -> None:
     out = apply_visual_pipeline_profile(s)
     assert out.visual_edit_prompt_compiler is True
     assert out.visual_smart_routing is False
-    assert out.visual_precrop_before_api is True
+    assert out.visual_precrop_before_api is False
+    assert out.visual_skip_post_crop is True
+    assert out.visual_image_input_fidelity == "low"
     assert out.visual_disable_pillow_retouch is True
     assert out.visual_edit_plan_model == "gpt-4o"
     assert out.visual_kb_scope_enabled is False
