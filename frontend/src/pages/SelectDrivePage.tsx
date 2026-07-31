@@ -165,14 +165,35 @@ export function SelectDrivePage() {
   }
 
   const oauthStatus = oauthStatusQuery.data;
+  const oauthWebAvailable = oauthStatus?.credentials_configured === true;
+  const showReconnectPanel =
+    oauthWebAvailable ||
+    oauthStatus?.refresh_token_configured === true ||
+    oauthStatus?.token_valid === false ||
+    tokenError;
   const showReconnect =
     tokenError ||
     oauthStatus?.token_valid === false ||
-    (oauthStatus?.credentials_configured === true &&
-      !oauthStatus?.refresh_token_configured);
+    oauthWebAvailable ||
+    (oauthStatus?.refresh_token_configured === true && !oauthWebAvailable);
 
   function handleReconnectGoogle() {
+    if (!oauthWebAvailable) {
+      setError(
+        "Riconnessione web non disponibile: imposta GOOGLE_CREDENTIALS_JSON (client OAuth Web) " +
+          "e GOOGLE_REDIRECT_URI su Vercel, poi ridistribuisci l'app.",
+      );
+      return;
+    }
     window.location.href = googleDriveReconnectUrl();
+  }
+
+  function driveConnectionLabel(): string {
+    if (!oauthStatus) return "verifica in corso…";
+    if (oauthStatus.token_valid === true) return "connesso";
+    if (oauthStatus.token_valid === false) return "token scaduto o revocato";
+    if (oauthStatus.refresh_token_configured) return "token configurato (non verificato)";
+    return "non connesso";
   }
 
   return (
@@ -190,24 +211,35 @@ export function SelectDrivePage() {
         </p>
       )}
 
-      {oauthStatus?.credentials_configured && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--story-border)] bg-[var(--story-surface)] px-4 py-3 text-sm">
-          <span className="text-[var(--story-muted)]">
-            Google Drive:{" "}
-            {oauthStatus.token_valid === true && "connesso"}
-            {oauthStatus.token_valid === false && "token scaduto o revocato"}
-            {oauthStatus.token_valid === null &&
-              (oauthStatus.refresh_token_configured
-                ? "token configurato"
-                : "non connesso")}
-          </span>
-          <button
-            type="button"
-            onClick={handleReconnectGoogle}
-            className="rounded-lg border border-[var(--story-accent)] px-3 py-1.5 text-xs font-medium text-[var(--story-accent)]"
-          >
-            Riconnetti Google Drive
-          </button>
+      {showReconnectPanel && (
+        <div className="space-y-2 rounded-lg border border-[var(--story-border)] bg-[var(--story-surface)] px-4 py-3 text-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-[var(--story-muted)]">
+              Google Drive: {driveConnectionLabel()}
+              {oauthStatus?.token_source ? ` (sorgente: ${oauthStatus.token_source})` : ""}
+            </span>
+            <button
+              type="button"
+              onClick={handleReconnectGoogle}
+              disabled={!oauthWebAvailable}
+              className="rounded-lg border border-[var(--story-accent)] px-3 py-1.5 text-xs font-medium text-[var(--story-accent)] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Riconnetti Google Drive
+            </button>
+          </div>
+          {!oauthWebAvailable && (
+            <p className="text-xs text-amber-200/90">
+              Per riconnettere da browser serve{" "}
+              <code className="rounded bg-black/20 px-1">GOOGLE_CREDENTIALS_JSON</code> (tipo{" "}
+              <strong>Web application</strong>) e{" "}
+              <code className="rounded bg-black/20 px-1">GOOGLE_REDIRECT_URI</code> nelle env
+              Vercel. In alternativa, in locale:{" "}
+              <code className="rounded bg-black/20 px-1">
+                python3 -m social_automation drive-auth
+              </code>
+              .
+            </p>
+          )}
         </div>
       )}
 
@@ -286,7 +318,7 @@ export function SelectDrivePage() {
           <p className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm whitespace-pre-wrap break-words text-red-200">
             {error}
           </p>
-          {showReconnect && (
+          {showReconnect && oauthWebAvailable && (
             <button
               type="button"
               onClick={handleReconnectGoogle}
