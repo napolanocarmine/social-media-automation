@@ -5,6 +5,7 @@ from __future__ import annotations
 import mimetypes
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from social_automation.db.store import (
     get_image_record,
@@ -14,6 +15,12 @@ from social_automation.db.store import (
 from social_automation.services.project_paths import project_root
 from social_automation.settings import Settings, load_settings, resolve_media_file_path
 from social_automation.storage import get_storage
+
+
+def is_remote_media_url(value: str) -> bool:
+    """True per URL http(s) — non richiede credenziali Blob."""
+    parsed = urlparse((value or "").strip())
+    return parsed.scheme in {"http", "https"}
 
 
 def _content_type_for_path(path: Path) -> str:
@@ -61,7 +68,7 @@ def maybe_persist_processed_media_to_blob(
         updates["original_path"] = original_url
     elif (original_path or "").strip():
         orig = Path(original_path.strip())
-        if orig.is_file() and not storage.is_remote_url(original_path):
+        if orig.is_file() and not is_remote_media_url(original_path):
             original_url = storage.upload(
                 f"originals/local/{image_id}.jpg",
                 orig.read_bytes(),
@@ -70,7 +77,7 @@ def maybe_persist_processed_media_to_blob(
             updates["original_path"] = original_url
 
     gen_raw = (generated_image_path or "").strip()
-    if gen_raw and not storage.is_remote_url(gen_raw):
+    if gen_raw and not is_remote_media_url(gen_raw):
         gen_path = Path(gen_raw)
         if gen_path.is_file() and gen_path.resolve() != processed_path.resolve():
             generated_url = storage.upload(
@@ -96,12 +103,11 @@ def media_urls_for_image(image_id: int, row: dict[str, Any] | None = None) -> di
     if row:
         processed = str(row.get("path") or "").strip()
         original = str(row.get("original_path") or "").strip()
-        storage = get_storage()
-        if processed and storage.is_remote_url(processed):
+        if processed and is_remote_media_url(processed):
             proc_url = processed
         else:
             proc_url = f"/api/v1/media/images/{image_id}/processed"
-        if original and storage.is_remote_url(original):
+        if original and is_remote_media_url(original):
             orig_url = original
         else:
             orig_url = f"/api/v1/media/images/{image_id}/original"
@@ -144,8 +150,7 @@ def resolve_processed_url(
     raw = str(row.get("path") or "").strip()
     if not raw:
         return None
-    storage = get_storage(settings)
-    if storage.is_remote_url(raw):
+    if is_remote_media_url(raw):
         return raw
     path = resolve_media_file_path(raw)
     if path is None or not _is_under_allowed_root(path, settings):
@@ -169,11 +174,10 @@ def resolve_original_url(
         str(data.get("original_path") or "").strip(),
         str(data.get("path") or "").strip(),
     ]
-    storage = get_storage(settings)
     for raw in candidates:
         if not raw:
             continue
-        if storage.is_remote_url(raw):
+        if is_remote_media_url(raw):
             return raw
         path = resolve_media_file_path(raw)
         if path is not None and _is_under_allowed_root(path, settings):
@@ -190,7 +194,7 @@ def resolve_processed_path(
     url = resolve_processed_url(db_path, image_id=image_id, settings=settings)
     if url is None:
         return None
-    if get_storage(settings).is_remote_url(url):
+    if is_remote_media_url(url):
         return None
     path = Path(url)
     return path if path.is_file() else None
@@ -206,7 +210,7 @@ def resolve_original_path(
     url = resolve_original_url(db_path, image_id=image_id, row=row, settings=settings)
     if url is None:
         return None
-    if get_storage(settings).is_remote_url(url):
+    if is_remote_media_url(url):
         return None
     path = Path(url)
     return path if path.is_file() else None
@@ -222,7 +226,7 @@ def resolve_dispatch_image_path(
     if not raw:
         raise FileNotFoundError("Path immagine vuoto")
     storage = get_storage(settings)
-    if storage.is_remote_url(raw):
+    if is_remote_media_url(raw):
         return storage.download_to_tmp(raw)
     path = Path(raw)
     if path.is_file():

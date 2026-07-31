@@ -21,8 +21,8 @@ from social_automation.models import MediaFormat, Platform
 from social_automation.services.drive_selection import business_category_options
 from social_automation.services.media import (
     media_urls_for_image,
-    resolve_original_path,
-    resolve_processed_path,
+    resolve_original_url,
+    resolve_processed_url,
 )
 from social_automation.settings import Settings, load_settings
 from social_automation.workflow.process_photo import revert_image_to_original
@@ -73,6 +73,14 @@ def _ai_insights_from_retouch(retouch: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def _optional_bool(value: Any) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    return bool(int(value))
+
+
 def _serialize_image_row(
     row: dict[str, Any],
     *,
@@ -81,8 +89,13 @@ def _serialize_image_row(
     include_metadata: bool = False,
 ) -> dict[str, Any]:
     image_id = int(row["id"])
-    processed = resolve_processed_path(db_path, image_id=image_id, settings=settings)
-    original = resolve_original_path(db_path, image_id=image_id, row=row, settings=settings)
+    processed_url = resolve_processed_url(db_path, image_id=image_id, settings=settings)
+    original_url = resolve_original_url(
+        db_path,
+        image_id=image_id,
+        row=row,
+        settings=settings,
+    )
     meta = latest_metadata_for_image(db_path, image_id=image_id) if include_metadata else None
     visual_method: str | None = None
     retouch = _parse_json_field(row.get("retouch_json"))
@@ -104,16 +117,14 @@ def _serialize_image_row(
         "approval_status": _approval_status_label(row.get("is_valid_for_publication")),
         "visual_score": float(row["visual_score"]) if row.get("visual_score") is not None else None,
         "visual_status": str(row.get("visual_status") or "").strip() or None,
-        "editing_required": bool(int(row["editing_required"]))
-        if row.get("editing_required") is not None
-        else None,
+        "editing_required": _optional_bool(row.get("editing_required")),
         "visual_method": visual_method,
         "revised_prompt": insights.get("revised_prompt"),
         "edit_plan_summary": insights.get("edit_plan_summary"),
         "producer_notes": insights.get("producer_notes"),
-        "has_processed_file": processed is not None,
-        "has_original_file": original is not None,
-        "media": media_urls_for_image(image_id),
+        "has_processed_file": processed_url is not None,
+        "has_original_file": original_url is not None,
+        "media": media_urls_for_image(image_id, row=row),
         "created_at": str(row.get("created_at") or ""),
         "updated_at": str(row.get("updated_at") or ""),
     }

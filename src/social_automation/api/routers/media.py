@@ -7,10 +7,10 @@ from fastapi.responses import FileResponse, RedirectResponse
 
 from social_automation.api.deps import DbPathDep, SettingsDep
 from social_automation.services.media import (
+    is_remote_media_url,
     resolve_original_url,
     resolve_processed_url,
 )
-from social_automation.storage import get_storage
 
 router = APIRouter(prefix="/media/images", tags=["media"])
 
@@ -29,7 +29,7 @@ def serve_processed(
     url = resolve_processed_url(db_path, image_id=image_id, settings=settings)
     if url is None:
         raise HTTPException(status_code=404, detail="File processato non trovato")
-    if get_storage(settings).is_remote_url(url):
+    if is_remote_media_url(url):
         return RedirectResponse(url, status_code=302)
     return _file_response(url)
 
@@ -43,6 +43,6 @@ def serve_original(
     url = resolve_original_url(db_path, image_id=image_id, settings=settings)
     if url is None:
         raise HTTPException(status_code=404, detail="File originale non trovato")
-    if get_storage(settings).is_remote_url(url):
+    if is_remote_media_url(url):
         return RedirectResponse(url, status_code=302)
     return _file_response(url)
