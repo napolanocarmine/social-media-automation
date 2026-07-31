@@ -27,6 +27,18 @@ def _scalar_row(row: dict[str, Any] | None) -> Any:
     return next(iter(row.values()))
 
 
+def pg_bool_param(value: bool | int | None) -> bool | None:
+    """Converte 0/1 stile SQLite in bool nativo per colonne Postgres BOOLEAN."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    iv = int(value)
+    if iv not in (0, 1):
+        raise ValueError(f"valore booleano atteso 0/1, ricevuto {value!r}")
+    return bool(iv)
+
+
 def _normalize_media_format(media_format: MediaFormat | str | None) -> str:
     if media_format is None:
         return MediaFormat.POST.value
@@ -792,7 +804,7 @@ def backfill_image_quality_evaluations(
                 WHERE id = %s
                 """,
                 (
-                    int(val.is_valid_by_quality_evaluation),
+                    pg_bool_param(val.is_valid_by_quality_evaluation),
                     str(val.predicted_class),
                     float(val.predicted_confidence),
                     iid,
@@ -1368,7 +1380,7 @@ def update_vision_eval(
                 updated_at = NOW()
             WHERE id = %s
             """,
-            (int(vision_pass), (reason or "").strip() or None, int(image_id)),
+            (pg_bool_param(vision_pass), (reason or "").strip() or None, int(image_id)),
         )
 
 
@@ -1404,7 +1416,7 @@ def set_image_manual_publication_valid(
                 SET is_valid_for_publication = %s, updated_at = NOW()
                 WHERE id = %s
                 """,
-                (bool(int(value)), iid),
+                (pg_bool_param(value), iid),
             )
 
 
@@ -1600,7 +1612,7 @@ def add_story_schedule_rule(
             INSERT INTO story_schedule_rules(
                 image_id, platform, schedule_mode, scheduled_for, weekday, time_local, timezone, active, detail
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, 1, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE, %s)
             RETURNING id
             """,
             (
@@ -1664,7 +1676,7 @@ def set_story_schedule_rule_active(
     with _connect(db_path) as conn:
         conn.execute(
             "UPDATE story_schedule_rules SET active = %s WHERE id = %s",
-            (1 if active else 0, int(rule_id)),
+            (pg_bool_param(active), int(rule_id)),
         )
 
 
