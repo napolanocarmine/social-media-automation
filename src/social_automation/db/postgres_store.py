@@ -352,7 +352,7 @@ def record_processed_artifacts(
                 (generated_image_path or "").strip() or None,
                 float(visual_score) if visual_score is not None else None,
                 (visual_status or "").strip() or None,
-                int(editing_required) if editing_required is not None else None,
+                editing_required,
                 image_id,
             ),
         )
@@ -506,7 +506,7 @@ def update_image_visual_state(
             """,
             (
                 (visual_status or "").strip() or None,
-                int(editing_required) if editing_required is not None else None,
+                editing_required,
                 int(image_id),
             ),
         )
@@ -549,7 +549,7 @@ def update_image_ai_artifacts(
                 (generated_image_path or "").strip() or None,
                 float(visual_score) if visual_score is not None else None,
                 (visual_status or "").strip() or None,
-                int(editing_required) if editing_required is not None else None,
+                editing_required,
                 int(image_id),
             ),
         )
