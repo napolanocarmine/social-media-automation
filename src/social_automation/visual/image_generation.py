@@ -11,7 +11,7 @@ import httpx
 from PIL import Image
 
 from social_automation.http.vision_httpx import vision_httpx_tls_params
-from social_automation.processing.image_adjust import image_api_size_for_crop
+from social_automation.processing.image_adjust import image_api_size_for_crop, normalize_image_api_size
 from social_automation.settings import Settings
 
 _LOG = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ def _edit_request_data(settings: Settings, *, prompt: str, crop_mode: str = "ins
         "prompt": prompt.strip(),
         "n": "1",
     }
-    explicit = (settings.visual_image_size or "").strip()
+    explicit = normalize_image_api_size(settings.visual_image_size or "")
     if explicit:
         data["size"] = explicit
     elif model.startswith("gpt-image"):

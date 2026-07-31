@@ -105,13 +105,10 @@ def resolve_vercel_oidc_token_from_env() -> str:
 
 
 def blob_storage_configured_from_env() -> bool:
-    """True se OIDC+store o read-write token sono disponibili."""
+    """True se le credenziali Blob sono risolvibili (token RW o OIDC+store)."""
     if resolve_blob_read_write_token_from_env():
         return True
     store_id = resolve_blob_store_id_from_env()
     if not store_id:
         return False
-    if resolve_vercel_oidc_token_from_env():
-        return True
-    # Su Vercel, con store collegato, VERCEL_OIDC_TOKEN è presente a runtime.
-    return bool(os.environ.get("VERCEL"))
+    return bool(resolve_vercel_oidc_token_from_env())

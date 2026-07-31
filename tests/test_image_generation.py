@@ -1,14 +1,19 @@
 from __future__ import annotations
 
-from social_automation.processing.image_adjust import image_api_size_for_crop
+from social_automation.processing.image_adjust import image_api_size_for_crop, normalize_image_api_size
 from social_automation.settings import Settings
 from social_automation.visual.image_generation import _edit_request_data
 
 
 def test_image_api_size_for_crop_modes() -> None:
     assert image_api_size_for_crop("instagram_4_5") == "1024x1536"
-    assert image_api_size_for_crop("story_9_16") == "1024x1792"
+    assert image_api_size_for_crop("story_9_16") == "auto"
     assert image_api_size_for_crop("facebook_context") == "1536x1024"
+
+
+def test_normalize_image_api_size_maps_legacy_story_size() -> None:
+    assert normalize_image_api_size("1024x1792") == "auto"
+    assert normalize_image_api_size("1024x1536") == "1024x1536"
 
 
 def test_edit_request_uses_high_fidelity_and_crop_size() -> None:
@@ -31,7 +36,7 @@ def test_edit_request_story_crop_size() -> None:
         visual_image_model="gpt-image-1",
     )
     data = _edit_request_data(settings, prompt="crop", crop_mode="story_9_16")
-    assert data["size"] == "1024x1792"
+    assert data["size"] == "auto"
 
 
 def test_edit_request_respects_explicit_size() -> None:

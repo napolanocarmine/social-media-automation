@@ -35,12 +35,12 @@ def test_responses_payload_uses_gpt_image_15_with_high_fidelity() -> None:
     assert tool["size"] == "1024x1536"
 
 
-def test_responses_payload_story_crop_uses_9_16_api_size() -> None:
+def test_responses_payload_story_crop_uses_auto_api_size() -> None:
     tool = ri._image_generation_tool(
         Settings(vision_api_key="sk-test"),
         crop_mode="story_9_16",
     )
-    assert tool["size"] == "1024x1792"
+    assert tool["size"] == "auto"
 
 
 def test_responses_payload_omits_fidelity_for_gpt_image_2() -> None:

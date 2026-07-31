@@ -11,7 +11,6 @@ from urllib.parse import urlencode, urlparse
 import httpx
 
 from social_automation.env import (
-    blob_storage_configured_from_env,
     normalize_blob_store_id,
     parse_blob_store_id_from_read_write_token,
     resolve_blob_read_write_token_from_env,
@@ -55,6 +54,31 @@ def resolve_blob_auth(settings: Settings | None = None) -> BlobAuth:
     )
 
 
+def blob_auth_diagnostics(settings: Settings | None = None) -> dict[str, bool | str | None]:
+    """Stato credenziali Blob per health/diagnostica."""
+    s = settings or load_settings()
+    store_id = resolve_blob_store_id_from_env()
+    rw = (s.blob_read_write_token or "").strip() or resolve_blob_read_write_token_from_env()
+    oidc = resolve_vercel_oidc_token_from_env()
+    configured = False
+    auth_mode: str | None = None
+    error: str | None = None
+    try:
+        auth = resolve_blob_auth(s)
+        configured = True
+        auth_mode = auth.kind
+    except RuntimeError as exc:
+        error = str(exc)
+    return {
+        "configured": configured,
+        "auth_mode": auth_mode,
+        "store_id_present": bool(store_id),
+        "read_write_token_present": bool(rw),
+        "oidc_token_present": bool(oidc),
+        "error": error,
+    }
+
+
 class BlobStorage:
     BLOB_API = "https://vercel.com/api/blob"
     BLOB_API_VERSION = "12"
@@ -69,10 +93,11 @@ class BlobStorage:
 
     @staticmethod
     def is_configured(settings: Settings | None = None) -> bool:
-        s = settings or load_settings()
-        if (s.blob_read_write_token or "").strip():
+        try:
+            resolve_blob_auth(settings)
             return True
-        return blob_storage_configured_from_env()
+        except RuntimeError:
+            return False
 
     def _auth_headers(self, *, content_type: str | None = None) -> dict[str, str]:
         headers = {

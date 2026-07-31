@@ -13,6 +13,10 @@ class HealthResponse(BaseModel):
     storage_backend: str | None = None
     blob_configured: bool | None = None
     blob_auth_mode: str | None = None
+    blob_store_id_present: bool | None = None
+    blob_read_write_token_present: bool | None = None
+    blob_oidc_token_present: bool | None = None
+    blob_error: str | None = None
     google_oauth_web_configured: bool | None = None
     google_refresh_configured: bool | None = None
 

@@ -32,17 +32,33 @@ def crop_mode_for_platform(platform: Platform, media_format: MediaFormat) -> str
     return "instagram_4_5"
 
 
-# Dimensioni API OpenAI (gpt-image-1.5): solo 1:1, 2:3, 3:2 o auto — niente 4:5 nativo.
-# Per IG 4:5 usare 1024x1536 (2:3) + post-crop Pillow (pipeline classica ai_edited).
+# Dimensioni API OpenAI image edit (Responses + Images): 1024x1024, 1024x1536, 1536x1024, auto.
+# Per IG 4:5 usare 1024x1536 (2:3) + post-crop Pillow. Per story 9:16 usare auto
+# (con pre-crop a 9:16) + finalize a 1080x1920 — 1024x1792 non è più accettato.
+SUPPORTED_IMAGE_API_SIZES = frozenset({"1024x1024", "1024x1536", "1536x1024", "auto"})
+
 API_SIZE_BY_CROP: dict[str, str] = {
     "instagram_4_5": "1024x1536",
     "instagram_post": "1024x1536",
-    "story_9_16": "1024x1792",
-    "instagram_story": "1024x1792",
+    "story_9_16": "auto",
+    "instagram_story": "auto",
     "facebook_context": "1536x1024",
     "facebook_post": "1536x1024",
     "none": "auto",
 }
+
+
+def normalize_image_api_size(size: str) -> str:
+    """Normalizza verso size accettate dall'API (es. legacy 1024x1792 → auto)."""
+    raw = (size or "").strip()
+    if not raw:
+        return ""
+    if raw == "1024x1792":
+        return "auto"
+    if raw in SUPPORTED_IMAGE_API_SIZES:
+        return raw
+    _LOG.warning("Dimensione image API non supportata (%s), uso auto", raw)
+    return "auto"
 
 
 def image_api_size_for_crop(crop_mode: str) -> str:

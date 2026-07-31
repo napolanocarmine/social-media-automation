@@ -14,7 +14,7 @@ from PIL import Image
 
 from social_automation.brand.openai_json import _encode_image
 from social_automation.http.vision_httpx import vision_httpx_tls_params
-from social_automation.processing.image_adjust import image_api_size_for_crop
+from social_automation.processing.image_adjust import image_api_size_for_crop, normalize_image_api_size
 from social_automation.settings import Settings
 from social_automation.visual.models import ImageEditApiResult
 
@@ -33,7 +33,7 @@ def _api_base(settings: Settings) -> str:
 
 
 def _resolve_api_size(settings: Settings, crop_mode: str) -> str:
-    explicit = (settings.visual_image_size or "").strip()
+    explicit = normalize_image_api_size(settings.visual_image_size or "")
     if explicit:
         return explicit
     return image_api_size_for_crop(crop_mode)

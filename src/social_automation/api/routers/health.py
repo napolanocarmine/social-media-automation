@@ -24,15 +24,23 @@ def health(settings: SettingsDep, db_path: DbPathDep) -> HealthResponse:
 
     blob_configured = False
     blob_auth_mode: str | None = None
+    blob_store_id_present: bool | None = None
+    blob_read_write_token_present: bool | None = None
+    blob_oidc_token_present: bool | None = None
+    blob_error: str | None = None
     try:
-        from social_automation.storage.blob_store import BlobStorage
+        from social_automation.storage.blob_store import blob_auth_diagnostics
 
-        blob_configured = BlobStorage.is_configured(settings)
-        if blob_configured:
-            auth = BlobStorage(settings).auth
-            blob_auth_mode = auth.kind
-    except Exception:
+        blob_diag = blob_auth_diagnostics(settings)
+        blob_configured = bool(blob_diag["configured"])
+        blob_auth_mode = blob_diag["auth_mode"]  # type: ignore[assignment]
+        blob_store_id_present = bool(blob_diag["store_id_present"])
+        blob_read_write_token_present = bool(blob_diag["read_write_token_present"])
+        blob_oidc_token_present = bool(blob_diag["oidc_token_present"])
+        blob_error = blob_diag["error"]  # type: ignore[assignment]
+    except Exception as exc:
         blob_configured = False
+        blob_error = str(exc).strip() or exc.__class__.__name__
 
     return HealthResponse(
         api_features=API_FEATURES,
@@ -42,6 +50,10 @@ def health(settings: SettingsDep, db_path: DbPathDep) -> HealthResponse:
         storage_backend=settings.storage_backend,
         blob_configured=blob_configured,
         blob_auth_mode=blob_auth_mode,
+        blob_store_id_present=blob_store_id_present,
+        blob_read_write_token_present=blob_read_write_token_present,
+        blob_oidc_token_present=blob_oidc_token_present,
+        blob_error=blob_error,
         google_oauth_web_configured=bool((settings.google_credentials_json or "").strip()),
         google_refresh_configured=bool(
             resolve_google_refresh_token(settings, db_path=db_path)
