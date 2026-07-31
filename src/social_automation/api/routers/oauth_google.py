@@ -10,6 +10,7 @@ from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 
 from social_automation.api.deps import DbPathDep, SettingsDep
+from social_automation.db.store import upsert_oauth_token
 from social_automation.drive.auth import SCOPES, get_credentials_from_env
 from social_automation.drive.oauth_redirect import resolve_google_oauth_redirect_uri
 from social_automation.drive.oauth_state import (
@@ -19,7 +20,6 @@ from social_automation.drive.oauth_state import (
     parse_signed_oauth_state,
 )
 from social_automation.drive.token_store import GOOGLE_DRIVE_PROVIDER, resolve_google_refresh_token
-from social_automation.db.store import upsert_oauth_token
 
 router = APIRouter(prefix="/oauth/google", tags=["oauth"])
 

@@ -51,8 +51,9 @@ def test_format_feedback_learnings_empty_when_disabled(tmp_path) -> None:
 
 
 def test_format_feedback_learnings_from_db(tmp_path) -> None:
-    from social_automation.db.store import ensure_db_schema, insert_approval_feedback
     import sqlite3
+
+    from social_automation.db.store import ensure_db_schema, insert_approval_feedback
 
     db_path = tmp_path / "db.sqlite3"
     ensure_db_schema(db_path)

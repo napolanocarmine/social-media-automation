@@ -27,6 +27,11 @@ from social_automation.visual.models import (
     VisualProductionResult,
     VisualReview,
 )
+from social_automation.visual.pipeline_trace import (
+    end_pipeline_trace,
+    get_pipeline_trace,
+    start_pipeline_trace,
+)
 from social_automation.visual.postprocess import (
     copy_or_finalize_for_crop_mode,
     precrop_source_for_api,
@@ -37,17 +42,12 @@ from social_automation.visual.prompts import (
     build_image_edit_prompt,
     build_image_edit_user_prompt,
 )
-from social_automation.visual.pipeline_trace import (
-    end_pipeline_trace,
-    get_pipeline_trace,
-    start_pipeline_trace,
-)
+from social_automation.visual.review import decision_engine, run_visual_review
 from social_automation.visual.routing import (
     resolve_produce_mode,
     should_run_edit_plan,
     should_run_prompt_compiler,
 )
-from social_automation.visual.review import decision_engine, run_visual_review
 
 _LOG = logging.getLogger(__name__)
 

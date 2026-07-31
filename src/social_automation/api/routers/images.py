@@ -10,8 +10,8 @@ from social_automation.api.schemas.images import (
     ImageListResponse,
     ImageSummary,
 )
-from social_automation.brand.feedback_learnings import APPROVAL_FEEDBACK_TAGS
 from social_automation.api.schemas.plans import GenerateCopyRequest
+from social_automation.brand.feedback_learnings import APPROVAL_FEEDBACK_TAGS
 from social_automation.models import MediaFormat, Platform
 from social_automation.services.images import (
     AI_OUTPUT_LIMIT_DEFAULT,

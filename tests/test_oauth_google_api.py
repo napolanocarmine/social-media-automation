@@ -3,12 +3,12 @@ from __future__ import annotations
 import json
 
 from fastapi.testclient import TestClient
+from google.auth.exceptions import RefreshError
 
 from social_automation.api.deps import get_db_path, get_settings
 from social_automation.api.main import create_app
 from social_automation.drive.errors import is_google_token_error
 from social_automation.settings import Settings
-from google.auth.exceptions import RefreshError
 
 
 def test_is_google_token_error() -> None:

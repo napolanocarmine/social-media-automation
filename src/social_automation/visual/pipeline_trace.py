@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 _LOG = logging.getLogger(__name__)
 

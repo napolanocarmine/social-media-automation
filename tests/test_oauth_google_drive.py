@@ -7,6 +7,7 @@ from social_automation.db.store import (
 )
 from social_automation.drive.oauth_state import (
     create_signed_oauth_state,
+    parse_signed_oauth_state,
     verify_signed_oauth_state,
 )
 from social_automation.drive.token_store import (
@@ -22,7 +23,6 @@ def test_signed_oauth_state_roundtrip() -> None:
         google_credentials_json='{"web":{"client_id":"x"}}',
     )
     state = create_signed_oauth_state(settings, code_verifier="pkce-verifier-abc")
-    from social_automation.drive.oauth_state import parse_signed_oauth_state, verify_signed_oauth_state
 
     assert verify_signed_oauth_state(settings, state)
     payload = parse_signed_oauth_state(settings, state)

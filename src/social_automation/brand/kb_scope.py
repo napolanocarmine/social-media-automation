@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import re
-from enum import Enum
+from enum import StrEnum
 from functools import lru_cache
 
 _SECTION_HEADER_RE = re.compile(r"^# (\d+)\.\s", re.MULTILINE)
 
 
-class KbScope(str, Enum):
+class KbScope(StrEnum):
     """Ambiti di knowledge base da iniettare nel system prompt."""
 
     FULL = "full"

@@ -9,8 +9,8 @@ from social_automation.api.deps import get_db_path, get_settings
 from social_automation.api.main import create_app
 from social_automation.db.store import record_processed_artifacts, update_image_media_paths
 from social_automation.models import MediaFormat, Platform
-from social_automation.settings import Settings
 from social_automation.services.media import blob_url_requires_proxy, is_private_blob_url
+from social_automation.settings import Settings
 
 
 def test_private_blob_url_detection() -> None:
