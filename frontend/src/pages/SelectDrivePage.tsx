@@ -242,6 +242,15 @@ export function SelectDrivePage() {
             .
           </p>
         )}
+        {oauthStatus?.redirect_uri && (
+          <p className="text-xs text-[var(--story-muted)] break-all">
+            Callback OAuth (deve essere identico in Google Cloud Console → Authorized redirect
+            URIs):{" "}
+            <code className="rounded bg-black/20 px-1 text-amber-100/90">
+              {oauthStatus.redirect_uri}
+            </code>
+          </p>
+        )}
         {oauthStatusQuery.isError && (
           <p className="text-xs text-amber-200/90">
             Endpoint OAuth non raggiungibile — il deploy potrebbe non essere aggiornato. Verifica{" "}

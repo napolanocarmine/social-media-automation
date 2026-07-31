@@ -227,6 +227,8 @@ export type GoogleOAuthStatus = {
   refresh_token_configured: boolean;
   token_valid: boolean | null;
   reconnect_url: string;
+  redirect_uri?: string;
+  redirect_uri_source?: string;
   token_source: string | null;
 };
 

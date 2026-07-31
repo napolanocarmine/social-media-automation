@@ -5,12 +5,13 @@ from __future__ import annotations
 import json
 import os
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 
 from social_automation.api.deps import DbPathDep, SettingsDep
 from social_automation.drive.auth import SCOPES, get_credentials_from_env
+from social_automation.drive.oauth_redirect import resolve_google_oauth_redirect_uri
 from social_automation.drive.oauth_state import create_signed_oauth_state, verify_signed_oauth_state
 from social_automation.drive.token_store import GOOGLE_DRIVE_PROVIDER, resolve_google_refresh_token
 from social_automation.db.store import upsert_oauth_token
@@ -18,16 +19,6 @@ from social_automation.db.store import upsert_oauth_token
 router = APIRouter(prefix="/oauth/google", tags=["oauth"])
 
 _OAUTH_SUCCESS_PATH = "/workflow/select?google=connected"
-
-
-def _redirect_uri(settings: SettingsDep) -> str:
-    explicit = (settings.google_redirect_uri or "").strip()
-    if explicit:
-        return explicit
-    vercel_url = (os.environ.get("VERCEL_URL") or "").strip()
-    if vercel_url:
-        return f"https://{vercel_url}/api/v1/oauth/google/callback"
-    return "http://127.0.0.1:8000/api/v1/oauth/google/callback"
 
 
 def _oauth_client_config(settings: SettingsDep) -> dict:
@@ -56,12 +47,13 @@ def _probe_google_token(settings: SettingsDep, db_path: DbPathDep) -> bool | Non
 
 
 @router.get("/start")
-def google_oauth_start(settings: SettingsDep):
+def google_oauth_start(settings: SettingsDep, request: Request):
     config = _oauth_client_config(settings)
+    redirect_uri = resolve_google_oauth_redirect_uri(settings, request=request)
     flow = Flow.from_client_config(
         config,
         scopes=list(SCOPES),
-        redirect_uri=_redirect_uri(settings),
+        redirect_uri=redirect_uri,
     )
     state = create_signed_oauth_state(settings)
     auth_url, _ = flow.authorization_url(access_type="offline", prompt="consent", state=state)
@@ -74,14 +66,16 @@ def google_oauth_callback(
     state: str,
     settings: SettingsDep,
     db_path: DbPathDep,
+    request: Request,
 ):
     if not verify_signed_oauth_state(settings, state):
         raise HTTPException(status_code=400, detail="State OAuth non valido o scaduto")
     config = _oauth_client_config(settings)
+    redirect_uri = resolve_google_oauth_redirect_uri(settings, request=request)
     flow = Flow.from_client_config(
         config,
         scopes=list(SCOPES),
-        redirect_uri=_redirect_uri(settings),
+        redirect_uri=redirect_uri,
     )
     flow.fetch_token(code=code)
     refresh = flow.credentials.refresh_token or ""
@@ -101,17 +95,33 @@ def google_oauth_callback(
 
 
 @router.get("/status")
-def google_oauth_status(settings: SettingsDep, db_path: DbPathDep):
+def google_oauth_status(settings: SettingsDep, db_path: DbPathDep, request: Request):
     creds_configured = bool((settings.google_credentials_json or "").strip())
     refresh_configured = bool(resolve_google_refresh_token(settings, db_path=db_path))
     token_valid = _probe_google_token(settings, db_path) if creds_configured else None
+    redirect_uri = resolve_google_oauth_redirect_uri(settings, request=request)
     return {
         "credentials_configured": creds_configured,
         "refresh_token_configured": refresh_configured,
         "token_valid": token_valid,
         "reconnect_url": "/api/v1/oauth/google/start",
+        "redirect_uri": redirect_uri,
+        "redirect_uri_source": _redirect_uri_source(settings, request),
         "token_source": _token_source(settings, db_path),
     }
+
+
+def _redirect_uri_source(settings: SettingsDep, request: Request) -> str:
+    if (settings.google_redirect_uri or "").strip():
+        return "env"
+    host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").strip()
+    if host and host not in {"localhost", "127.0.0.1"}:
+        return "request_host"
+    if (os.environ.get("VERCEL_PROJECT_PRODUCTION_URL") or "").strip():
+        return "vercel_production_url"
+    if (os.environ.get("VERCEL_URL") or "").strip():
+        return "vercel_url"
+    return "localhost"
 
 
 def _token_source(settings: SettingsDep, db_path: DbPathDep) -> str | None:

@@ -35,3 +35,4 @@ def test_google_oauth_status_endpoint(tmp_path) -> None:
     assert body["credentials_configured"] is True
     assert body["refresh_token_configured"] is False
     assert body["reconnect_url"] == "/api/v1/oauth/google/start"
+    assert body["redirect_uri"].endswith("/api/v1/oauth/google/callback")
