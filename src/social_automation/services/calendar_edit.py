@@ -75,14 +75,19 @@ def save_reschedule(
         prev_ext = (str(latest.get("external_id") or "")).strip()
 
     detail = None
-    if media_format != MediaFormat.STORY:
+    if media_format == MediaFormat.STORY:
+        detail = planning_detail_with_caption(media_format=MediaFormat.STORY) or None
+    else:
         cap_text = (caption or "").strip()
         if not cap_text:
             pack = get_copy_pack(db_path, image_id=image_id)
             cap_text = caption_for_platform(pack, platform=platform, media_format=media_format)
         if media_format == MediaFormat.POST and not cap_text:
             raise ValueError("La caption è obbligatoria per un post.")
-        detail = planning_detail_with_caption(cap_text) or (cap_text or None)
+        detail = (
+            planning_detail_with_caption(cap_text, media_format=MediaFormat.POST)
+            or (cap_text or None)
+        )
 
     event_id = add_planning_event(
         db_path,

@@ -1125,7 +1125,18 @@ def list_due_events(
       i.is_valid_for_publication,
       i.vision_eval_pass,
       i.vision_eval_reason,
-      i.copy_json
+      i.copy_json,
+      i.render_ig,
+      i.render_fb,
+      i.render_ig_story,
+      i.render_fb_story,
+      (
+        SELECT m.media_format
+        FROM metadata m
+        WHERE m.image_id = i.id
+        ORDER BY m.id DESC
+        LIMIT 1
+      ) AS metadata_media_format
     FROM ranked r
     JOIN images i ON i.id = r.image_id
     WHERE r.rn = 1

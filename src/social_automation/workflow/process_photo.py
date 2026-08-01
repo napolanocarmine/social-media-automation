@@ -185,6 +185,7 @@ def process_local_photo(
         generated_image_path=production.generated_image_path,
         source_asset_id=source_asset_id,
         platform=platform.value,
+        media_format=media_format.value,
     )
     if blob_urls.get("path"):
         final_path = Path(blob_urls["path"])
@@ -467,6 +468,7 @@ def reprocess_existing_image(
         generated_image_path=production.generated_image_path,
         source_asset_id=str(meta.get("source_asset_id") or "").strip() or None,
         platform=platform.value,
+        media_format=media_format.value,
     )
     if blob_urls.get("path"):
         final_path = Path(blob_urls["path"])

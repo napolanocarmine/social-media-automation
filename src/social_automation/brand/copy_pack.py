@@ -48,13 +48,28 @@ def copy_approved(copy_data: dict[str, Any] | None) -> bool:
     return False
 
 
-def planning_detail_with_caption(caption: str) -> str:
+def planning_detail_with_caption(
+    caption: str = "",
+    *,
+    media_format: MediaFormat | str | None = None,
+) -> str:
     import json
 
+    payload: dict[str, str] = {}
     cap = (caption or "").strip()
-    if not cap:
+    if cap:
+        payload["caption"] = cap
+    if media_format is not None:
+        fmt = (
+            media_format.value
+            if isinstance(media_format, MediaFormat)
+            else str(media_format).strip().lower()
+        )
+        if fmt in {MediaFormat.POST.value, MediaFormat.STORY.value}:
+            payload["media_format"] = fmt
+    if not payload:
         return ""
-    return json.dumps({"caption": cap}, ensure_ascii=False)
+    return json.dumps(payload, ensure_ascii=False)
 
 
 def caption_from_planning_detail(detail: str | None) -> str:

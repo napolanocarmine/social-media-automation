@@ -66,6 +66,7 @@ def maybe_persist_processed_media_to_blob(
     generated_image_path: str | None = None,
     source_asset_id: str | None = None,
     platform: str = "instagram",
+    media_format: str = "post",
 ) -> dict[str, str]:
     """Su Vercel Blob: upload file locali (/tmp) e salva URL in Postgres."""
     backend = (settings.storage_backend or "local").strip().lower()
@@ -77,9 +78,14 @@ def maybe_persist_processed_media_to_blob(
     storage = get_storage(settings)
     updates: dict[str, str] = {}
     platform_key = (platform or "instagram").strip().lower() or "instagram"
+    fmt = (media_format or "post").strip().lower()
+    if fmt == "story":
+        blob_key = f"processed/stories/{platform_key}/{image_id}_story.jpg"
+    else:
+        blob_key = f"processed/{platform_key}/{image_id}.jpg"
 
     processed_url = storage.upload(
-        f"processed/{platform_key}/{image_id}.jpg",
+        blob_key,
         processed_path.read_bytes(),
         content_type=_content_type_for_path(processed_path),
     )

@@ -265,7 +265,10 @@ def prepare_week(
             platform=slot.platform,
             media_format=MediaFormat.POST,
         )
-        plan_detail = planning_detail_with_caption(caption) or f"prepare-week:{category or biz_cat or ''}"
+        plan_detail = (
+            planning_detail_with_caption(caption, media_format=MediaFormat.POST)
+            or f"prepare-week:{category or biz_cat or ''}"
+        )
 
         assignment = {
             "image_id": image_id,

@@ -11,7 +11,8 @@ from social_automation.app_timezone import now_app, parse_iso_datetime
 from social_automation.brand.copy_pack import caption_for_platform
 from social_automation.db.store import add_planning_event, list_due_events
 from social_automation.meta.client import MetaClient
-from social_automation.models import MediaFormat, Platform, infer_media_format_from_render_path
+from social_automation.models import MediaFormat, Platform
+from social_automation.scheduling.dispatch_format import resolve_dispatch_media_format
 from social_automation.scheduling.dispatch_gates import check_image_dispatch_gates
 from social_automation.scheduling.story_rules_dispatch import run_story_rules_dispatch
 from social_automation.services.media import resolve_dispatch_image_path
@@ -102,7 +103,7 @@ def run_dispatch_scheduled(
             continue
 
         image_path_raw = str(row.get("image_path", ""))
-        mf = infer_media_format_from_render_path(Path(image_path_raw.split("/")[-1]))
+        mf = resolve_dispatch_media_format(row, image_path=image_path_raw)
         caption = _caption_for_dispatch(row, plat, mf)
         add_planning_event(
             settings.db_path,

@@ -65,6 +65,9 @@ def test_copy_approved() -> None:
 
 
 def test_planning_detail_json() -> None:
-    raw = planning_detail_with_caption("Ciao Story")
+    raw = planning_detail_with_caption("Ciao Story", media_format=MediaFormat.POST)
     assert '"caption"' in raw
+    assert '"media_format"' in raw
     assert "Ciao Story" in raw
+    story_only = planning_detail_with_caption(media_format=MediaFormat.STORY)
+    assert '"media_format": "story"' in story_only

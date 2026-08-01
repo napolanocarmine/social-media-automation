@@ -18,7 +18,8 @@ from social_automation.db.store import (
     story_occurrence_exists,
 )
 from social_automation.meta.client import MetaClient
-from social_automation.models import Platform, infer_media_format_from_render_path
+from social_automation.models import Platform
+from social_automation.scheduling.dispatch_format import resolve_dispatch_media_format
 from social_automation.scheduling.dispatch_gates import check_image_dispatch_gates
 from social_automation.settings import Settings, load_settings, resolve_media_file_path
 
@@ -219,7 +220,11 @@ def run_story_rules_dispatch(
         try:
             if not image_path.is_file():
                 raise FileNotFoundError(f"File render non trovato: {image_path}")
-            mf = infer_media_format_from_render_path(image_path).value
+            mf = resolve_dispatch_media_format(
+                img_rows[0] if img_rows else {},
+                image_path=raw_path,
+                force_story=True,
+            ).value
             external_id = meta.publish_image(plat, image_path, caption, media_format=mf)
             add_planning_event(
                 db_path,

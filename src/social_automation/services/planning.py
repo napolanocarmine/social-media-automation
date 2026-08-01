@@ -216,9 +216,13 @@ def save_plan(
         prev_ext = (str(latest.get("external_id") or "")).strip()
 
     story_detail = None
-    if media_format != MediaFormat.STORY:
+    if media_format == MediaFormat.STORY:
+        story_detail = planning_detail_with_caption(media_format=MediaFormat.STORY) or None
+    else:
         cap_text = (caption or "").strip() or cap_from_pack
-        story_detail = planning_detail_with_caption(cap_text) or (cap_text or None)
+        story_detail = (
+            planning_detail_with_caption(cap_text, media_format=MediaFormat.POST) or (cap_text or None)
+        )
 
     event_id = add_planning_event(
         db_path,
@@ -293,14 +297,14 @@ def reschedule_plan(
     caption: str | None = None,
     settings: Settings | None = None,
 ) -> dict[str, Any]:
-    from social_automation.models import infer_media_format_from_render_path
+    from social_automation.scheduling.dispatch_format import resolve_dispatch_media_format
 
     s = settings or load_settings()
     row = get_image_record(db_path, image_id=image_id)
     if row is None:
         raise ValueError(f"Immagine #{image_id} non trovata")
     image_path = Path(str(row.get("path", "")))
-    media_format = infer_media_format_from_render_path(image_path)
+    media_format = resolve_dispatch_media_format(row, image_path=image_path)
     scheduled_for = combine_app(plan_date, plan_time, s)
 
     latest = latest_plan_for_image(db_path, image_id=image_id, platform=platform)

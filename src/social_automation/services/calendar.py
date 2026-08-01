@@ -12,7 +12,7 @@ from social_automation.app_timezone import (
 )
 from social_automation.brand.copy_pack import caption_for_platform, caption_from_planning_detail
 from social_automation.db.store import get_copy_pack, list_calendar_items, list_pending_events
-from social_automation.models import Platform, infer_media_format_from_render_path
+from social_automation.scheduling.dispatch_format import resolve_dispatch_media_format
 from social_automation.services.media import media_urls_for_image
 from social_automation.settings import Settings
 
@@ -21,7 +21,7 @@ def serialize_calendar_event(ev: dict[str, Any], *, settings: Settings) -> dict[
     raw_when = str(ev.get("scheduled_for", ""))
     dt = parse_iso_datetime(raw_when, settings)
     image_path = Path(str(ev.get("image_path", "")))
-    media_format = infer_media_format_from_render_path(image_path)
+    media_format = resolve_dispatch_media_format(ev, image_path=image_path)
     image_id = int(ev["image_id"])
     pack = get_copy_pack(settings.db_path, image_id=image_id)
     platform = Platform(str(ev.get("platform")))
