@@ -156,6 +156,7 @@ def process_local_photo(
         "marketing_objectives": marketing_objectives or [],
         "marketing_objective": marketing_objective,
         "channels": [c.value for c in (channels or [])],
+        "visual_image_input_fidelity": s.visual_image_input_fidelity,
     }
     image_id = record_processed_artifacts(
         s.db_path,
@@ -445,6 +446,7 @@ def reprocess_existing_image(
         "marketing_objectives": marketing_objectives,
         "marketing_objective": marketing_objective,
         "channels": channels_raw,
+        "visual_image_input_fidelity": s.visual_image_input_fidelity,
     }
     append_image_metadata_snapshot(
         s.db_path,

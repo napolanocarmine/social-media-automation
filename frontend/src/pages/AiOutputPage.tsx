@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { BatchProgressBanner } from "../components/BatchProgressBanner";
 import { ErrorNotice } from "../components/ErrorNotice";
 import { ApprovalBadge, ImageCompare } from "../components/ImageCompare";
 import { imageReviewCardClass, imageReviewGridClass } from "../components/imageReviewLayout";
-import { fetchAiOutput, reprocessImage } from "../lib/api/client";
+import { fetchAiOutput, fetchVisualPipelineConfig, reprocessImage } from "../lib/api/client";
 import { getErrorMessage } from "../lib/api/errors";
 
 const filters = [
@@ -21,8 +21,20 @@ export function AiOutputPage() {
   const batchParam = searchParams.get("batch");
   const batchId = batchParam && /^\d+$/.test(batchParam) ? Number(batchParam) : undefined;
   const [filter, setFilter] = useState<(typeof filters)[number]["value"]>("pending");
+  const [inputFidelity, setInputFidelity] = useState("low");
   const [reprocessError, setReprocessError] = useState<string | null>(null);
   const [reprocessingId, setReprocessingId] = useState<number | null>(null);
+
+  const pipelineQuery = useQuery({
+    queryKey: ["config", "visual-pipeline"],
+    queryFn: fetchVisualPipelineConfig,
+  });
+
+  useEffect(() => {
+    if (pipelineQuery.data?.default_input_fidelity) {
+      setInputFidelity(pipelineQuery.data.default_input_fidelity);
+    }
+  }, [pipelineQuery.data?.default_input_fidelity]);
 
   const query = useQuery({
     queryKey: ["images", "ai-output", filter],
@@ -30,7 +42,8 @@ export function AiOutputPage() {
   });
 
   const reprocessMutation = useMutation({
-    mutationFn: (imageId: number) => reprocessImage(imageId),
+    mutationFn: (imageId: number) =>
+      reprocessImage(imageId, { visual_image_input_fidelity: inputFidelity }),
     onMutate: (imageId) => {
       setReprocessError(null);
       setReprocessingId(imageId);
@@ -57,6 +70,24 @@ export function AiOutputPage() {
       </header>
 
       <BatchProgressBanner batchId={batchId} />
+
+      <label className="block max-w-md space-y-1 text-sm">
+        <span className="text-[var(--story-muted)]">Input fidelity (rigenera)</span>
+        <select
+          value={inputFidelity}
+          onChange={(e) => setInputFidelity(e.target.value)}
+          className="w-full rounded-lg border border-[var(--story-border)] bg-[var(--story-bg)] px-3 py-2"
+        >
+          {(pipelineQuery.data?.input_fidelity_options ?? [
+            { value: "low", label: "Bassa — generazione parziale più visibile" },
+            { value: "high", label: "Alta — preserva pixel originali (edit sottile)" },
+          ]).map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </label>
 
       {reprocessError ? (
         <ErrorNotice title="Rigenerazione non riuscita" message={reprocessError} />

@@ -26,6 +26,10 @@ from social_automation.services.batches import (
     stop_batch,
 )
 from social_automation.services.drive_thumbnails import clear_drive_thumb_cache
+from social_automation.visual.input_fidelity import (
+    normalize_input_fidelity,
+    settings_with_input_fidelity,
+)
 
 router = APIRouter(prefix="/batches", tags=["batches"])
 
@@ -85,6 +89,12 @@ def start_ai_batch(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     assets = [a.model_dump() for a in req.assets]
+    fidelity_override: str | None = None
+    if req.visual_image_input_fidelity:
+        try:
+            fidelity_override = normalize_input_fidelity(req.visual_image_input_fidelity)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
     try:
         batch_id = start_selected_ai_batch(
             settings,
@@ -94,6 +104,7 @@ def start_ai_batch(
             assets=assets,
             marketing_objectives=req.marketing_objectives,
             channels=req.channels,
+            visual_image_input_fidelity=fidelity_override,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -102,7 +113,8 @@ def start_ai_batch(
 
     if settings.batch_auto_process:
         max_items = min(len(assets), int(settings.batch_auto_process_max_items))
-        process_batch_queue(settings, max_items=max_items)
+        effective_settings = settings_with_input_fidelity(settings, fidelity_override)
+        process_batch_queue(effective_settings, max_items=max_items)
 
     return StartAiBatchResponse(batch_id=batch_id)
 

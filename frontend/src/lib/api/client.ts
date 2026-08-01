@@ -43,6 +43,16 @@ export type ApprovalPayload = {
   tags?: string[];
 };
 
+export type InputFidelityOption = {
+  value: string;
+  label: string;
+};
+
+export type VisualPipelineConfig = {
+  input_fidelity_options: InputFidelityOption[];
+  default_input_fidelity: string;
+};
+
 export type DriveAsset = {
   file_id: string;
   name: string;
@@ -272,6 +282,7 @@ export async function startAiBatch(body: {
   marketing_objectives?: string[];
   channels?: string[];
   clear_thumb_cache?: boolean;
+  visual_image_input_fidelity?: string;
 }): Promise<{ batch_id: number }> {
   return parseJson(
     await fetch("/api/v1/batches/ai", {
@@ -327,10 +338,15 @@ export async function postImageApproval(
   );
 }
 
-export async function reprocessImage(imageId: number): Promise<ImageSummary> {
+export async function reprocessImage(
+  imageId: number,
+  body?: { visual_image_input_fidelity?: string },
+): Promise<ImageSummary> {
   return parseJson(
     await fetch(`/api/v1/images/${imageId}/reprocess`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
     }),
   );
 }
@@ -379,6 +395,10 @@ export async function generateImageCopy(
 
 export async function fetchMarketingObjectives(): Promise<{ objectives: string[] }> {
   return parseJson(await fetch("/api/v1/config/marketing-objectives"));
+}
+
+export async function fetchVisualPipelineConfig(): Promise<VisualPipelineConfig> {
+  return parseJson(await fetch("/api/v1/config/visual-pipeline"));
 }
 
 export type DispatchConfig = {

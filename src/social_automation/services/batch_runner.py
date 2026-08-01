@@ -19,6 +19,7 @@ def start_selected_ai_batch(
     assets: list[dict],
     marketing_objectives: list[str] | None = None,
     channels: list[str] | None = None,
+    visual_image_input_fidelity: str | None = None,
 ) -> int:
     if not assets:
         raise ValueError("Seleziona almeno un asset Drive")
@@ -45,6 +46,8 @@ def start_selected_ai_batch(
         payload.setdefault("marketing_objectives", list(marketing_objectives or []))
         payload.setdefault("channels", list(channels or []))
         payload["business_category"] = business_category
+        if visual_image_input_fidelity:
+            payload["visual_image_input_fidelity"] = visual_image_input_fidelity
         add_batch_item(
             db_path,
             batch_id=batch_id,

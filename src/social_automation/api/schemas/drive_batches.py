@@ -40,6 +40,10 @@ class StartAiBatchRequest(BaseModel):
     marketing_objectives: list[str] = Field(default_factory=list)
     channels: list[str] = Field(default_factory=list)
     clear_thumb_cache: bool = False
+    visual_image_input_fidelity: str | None = Field(
+        default=None,
+        description="Override input_fidelity per questo batch (high | low).",
+    )
 
 
 class StartAiBatchResponse(BaseModel):

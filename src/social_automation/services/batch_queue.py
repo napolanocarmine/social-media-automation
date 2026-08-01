@@ -17,6 +17,7 @@ from social_automation.db.store import (
 from social_automation.drive.client import DriveClient
 from social_automation.models import DriveAsset, MediaFormat, Platform
 from social_automation.settings import Settings
+from social_automation.visual.input_fidelity import settings_with_input_fidelity
 from social_automation.workflow.process_photo import process_drive_asset
 
 _LOG = logging.getLogger(__name__)
@@ -97,11 +98,15 @@ def process_next_batch_item(settings: Settings) -> dict[str, Any]:
 
     try:
         drive = DriveClient.from_settings(settings)
+        effective_settings = settings_with_input_fidelity(
+            settings,
+            payload.get("visual_image_input_fidelity"),
+        )
         out = process_drive_asset(
             asset,
             platform=platform,
             media_format=media_format,
-            settings=settings,
+            settings=effective_settings,
             business_category=str(item.get("business_category") or payload.get("business_category") or ""),
             drive=drive,
             auto_approve=False,

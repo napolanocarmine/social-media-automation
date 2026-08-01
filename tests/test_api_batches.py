@@ -127,3 +127,66 @@ def test_config_categories() -> None:
     body = response.json()
     assert isinstance(body["categories"], list)
     assert len(body["categories"]) >= 1
+
+
+def test_start_ai_batch_stores_input_fidelity_in_payload(tmp_path) -> None:
+    import json
+
+    db_path = tmp_path / "db.sqlite3"
+    out_dir = tmp_path / "output"
+    out_dir.mkdir()
+    settings = Settings(db_path=db_path, output_dir=out_dir, batch_auto_process=False)
+    client = _client(db_path, settings)
+
+    assets = [
+        {
+            "file_id": "abc123",
+            "name": "photo.jpg",
+            "mime_type": "image/jpeg",
+            "path_segments": ["2025", "06", "food"],
+        }
+    ]
+    response = client.post(
+        "/api/v1/batches/ai",
+        json={
+            "category": "food",
+            "platform": "instagram",
+            "media_format": "post",
+            "assets": assets,
+            "visual_image_input_fidelity": "high",
+        },
+    )
+    assert response.status_code == 200
+    batch_id = response.json()["batch_id"]
+    items = list_batch_items(db_path, batch_id=batch_id)
+    payload = items[0]["payload_json"]
+    if isinstance(payload, str):
+        payload = json.loads(payload)
+    assert payload["visual_image_input_fidelity"] == "high"
+
+
+def test_start_ai_batch_rejects_invalid_input_fidelity(tmp_path) -> None:
+    db_path = tmp_path / "db.sqlite3"
+    settings = Settings(db_path=db_path, output_dir=tmp_path / "output", batch_auto_process=False)
+    client = _client(db_path, settings)
+    response = client.post(
+        "/api/v1/batches/ai",
+        json={
+            "category": "food",
+            "platform": "instagram",
+            "media_format": "post",
+            "assets": [{"file_id": "x", "name": "a.jpg", "mime_type": "image/jpeg"}],
+            "visual_image_input_fidelity": "medium",
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_config_visual_pipeline() -> None:
+    client = TestClient(create_app())
+    response = client.get("/api/v1/config/visual-pipeline")
+    assert response.status_code == 200
+    body = response.json()
+    values = {opt["value"] for opt in body["input_fidelity_options"]}
+    assert values == {"high", "low"}
+    assert body["default_input_fidelity"] in values

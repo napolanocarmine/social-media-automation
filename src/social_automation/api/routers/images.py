@@ -9,6 +9,7 @@ from social_automation.api.schemas.images import (
     ApprovalResponse,
     ImageListResponse,
     ImageSummary,
+    ReprocessRequest,
 )
 from social_automation.api.schemas.plans import GenerateCopyRequest
 from social_automation.brand.feedback_learnings import APPROVAL_FEEDBACK_TAGS
@@ -28,6 +29,10 @@ from social_automation.services.planning import (
     generate_image_copy,
     get_copy_pack_for_image,
     list_plannable,
+)
+from social_automation.visual.input_fidelity import (
+    normalize_input_fidelity,
+    settings_with_input_fidelity,
 )
 
 router = APIRouter(prefix="/images", tags=["images"])
@@ -173,9 +178,17 @@ def reprocess_image(
     image_id: int,
     settings: SettingsDep,
     db_path: DbPathDep,
+    req: ReprocessRequest | None = None,
 ) -> ImageSummary:
+    effective_settings = settings
+    if req and req.visual_image_input_fidelity:
+        try:
+            fidelity = normalize_input_fidelity(req.visual_image_input_fidelity)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        effective_settings = settings_with_input_fidelity(settings, fidelity)
     try:
-        reprocess_ai_image(db_path, image_id=image_id, settings=settings)
+        reprocess_ai_image(db_path, image_id=image_id, settings=effective_settings)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:

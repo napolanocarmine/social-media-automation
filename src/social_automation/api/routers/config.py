@@ -4,12 +4,14 @@ import os
 
 from fastapi import APIRouter
 
+from social_automation.api.deps import SettingsDep
 from social_automation.api.schemas.drive_batches import CategoriesResponse
 from social_automation.brand.prompt_context import MARKETING_OBJECTIVES
 from social_automation.services.drive_selection import (
     DEFAULT_CATEGORIES_CONFIG,
     business_category_options,
 )
+from social_automation.visual.input_fidelity import INPUT_FIDELITY_LABELS, INPUT_FIDELITY_OPTIONS
 
 router = APIRouter(prefix="/config", tags=["config"])
 
@@ -22,6 +24,17 @@ def list_categories() -> CategoriesResponse:
 @router.get("/marketing-objectives")
 def list_marketing_objectives() -> dict[str, list[str]]:
     return {"objectives": list(MARKETING_OBJECTIVES)}
+
+
+@router.get("/visual-pipeline")
+def visual_pipeline_config(settings: SettingsDep) -> dict:
+    return {
+        "input_fidelity_options": [
+            {"value": value, "label": INPUT_FIDELITY_LABELS[value]}
+            for value in INPUT_FIDELITY_OPTIONS
+        ],
+        "default_input_fidelity": settings.visual_image_input_fidelity,
+    }
 
 
 @router.get("/dispatch")

@@ -1,13 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Pagination } from "../components/Pagination";
+import {
+  driveAssetsQueryKey,
+  loadDriveSession,
+  saveDriveSession,
+} from "../lib/driveSession";
 import {
   driveThumbnailUrl,
   fetchDriveAssets,
   fetchGoogleOAuthStatus,
   fetchImageCategories,
   fetchMarketingObjectives,
+  fetchVisualPipelineConfig,
   googleDriveReconnectUrl,
   startAiBatch,
   type DriveAsset,
@@ -29,31 +35,100 @@ const MONTHS_IT = [
   "Dicembre",
 ];
 
+async function fetchAllDriveAssets(params: {
+  category: string;
+  year: number;
+  month: number;
+  refreshCache: boolean;
+}): Promise<DriveAsset[]> {
+  const collected: DriveAsset[] = [];
+  let pageNum = 0;
+  let total = 0;
+  do {
+    const chunk = await fetchDriveAssets({
+      category: params.category,
+      year: params.year,
+      month: params.month,
+      page: pageNum,
+      pageSize: 100,
+      refreshCache: pageNum === 0 && params.refreshCache,
+    });
+    collected.push(...chunk.items);
+    total = chunk.total;
+    pageNum += 1;
+  } while (collected.length < total);
+  return collected;
+}
+
 export function SelectDrivePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const now = new Date();
+  const savedSession = loadDriveSession();
+  const restoredRef = useRef(false);
 
   const categoriesQuery = useQuery({
     queryKey: ["config", "categories"],
     queryFn: fetchImageCategories,
   });
 
+  const pipelineQuery = useQuery({
+    queryKey: ["config", "visual-pipeline"],
+    queryFn: fetchVisualPipelineConfig,
+  });
+
   const categories = categoriesQuery.data?.categories ?? ["food"];
-  const [category, setCategory] = useState("food");
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [category, setCategory] = useState(savedSession?.category ?? "food");
+  const [year, setYear] = useState(savedSession?.year ?? now.getFullYear());
+  const [month, setMonth] = useState(savedSession?.month ?? now.getMonth() + 1);
   const [page, setPage] = useState(0);
-  const [loaded, setLoaded] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [loaded, setLoaded] = useState(savedSession?.loaded ?? false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    () => new Set(savedSession?.selectedIds ?? []),
+  );
   const [allAssets, setAllAssets] = useState<DriveAsset[]>([]);
-  const [platform, setPlatform] = useState("instagram");
-  const [format, setFormat] = useState("post");
-  const [objectives, setObjectives] = useState<string[]>(["Engagement"]);
+  const [platform, setPlatform] = useState(savedSession?.platform ?? "instagram");
+  const [format, setFormat] = useState(savedSession?.format ?? "post");
+  const [objectives, setObjectives] = useState<string[]>(
+    savedSession?.objectives?.length ? savedSession.objectives : ["Engagement"],
+  );
+  const [inputFidelity, setInputFidelity] = useState(
+    savedSession?.inputFidelity ?? pipelineQuery.data?.default_input_fidelity ?? "low",
+  );
   const [error, setError] = useState<string | null>(null);
   const [tokenError, setTokenError] = useState(false);
   const [oauthNotice, setOauthNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (pipelineQuery.data?.default_input_fidelity && !savedSession?.inputFidelity) {
+      setInputFidelity(pipelineQuery.data.default_input_fidelity);
+    }
+  }, [pipelineQuery.data?.default_input_fidelity, savedSession?.inputFidelity]);
+
+  useEffect(() => {
+    saveDriveSession({
+      category,
+      year,
+      month,
+      selectedIds: [...selectedIds],
+      platform,
+      format,
+      objectives,
+      inputFidelity,
+      loaded,
+    });
+  }, [
+    category,
+    year,
+    month,
+    selectedIds,
+    platform,
+    format,
+    objectives,
+    inputFidelity,
+    loaded,
+  ]);
 
   const oauthStatusQuery = useQuery({
     queryKey: ["oauth", "google", "status"],
@@ -82,31 +157,35 @@ export function SelectDrivePage() {
     "Notorietà",
   ];
 
+  const fidelityOptions = pipelineQuery.data?.input_fidelity_options ?? [
+    { value: "low", label: "Bassa — generazione parziale più visibile" },
+    { value: "high", label: "Alta — preserva pixel originali (edit sottile)" },
+  ];
+
   const pageSize = 12;
 
   const loadMutation = useMutation({
     mutationFn: async (refreshCache: boolean) => {
-      const collected: DriveAsset[] = [];
-      let pageNum = 0;
-      let total = 0;
-      do {
-        const chunk = await fetchDriveAssets({
-          category,
-          year,
-          month,
-          page: pageNum,
-          pageSize: 100,
-          refreshCache: pageNum === 0 && refreshCache,
-        });
-        collected.push(...chunk.items);
-        total = chunk.total;
-        pageNum += 1;
-      } while (collected.length < total);
-      return collected;
+      const key = driveAssetsQueryKey(category, year, month);
+      if (refreshCache) {
+        queryClient.removeQueries({ queryKey: key });
+      }
+      return queryClient.fetchQuery({
+        queryKey: key,
+        queryFn: () => fetchAllDriveAssets({ category, year, month, refreshCache }),
+        staleTime: 5 * 60 * 1000,
+      });
     },
-    onSuccess: (items) => {
+    onSuccess: (items, refreshCache) => {
       setAllAssets(items);
-      setSelectedIds(new Set());
+      if (refreshCache) {
+        setSelectedIds(new Set());
+      } else {
+        setSelectedIds((prev) => {
+          const valid = new Set(items.map((a) => a.file_id));
+          return new Set([...prev].filter((id) => valid.has(id)));
+        });
+      }
       setPage(0);
       setLoaded(true);
       setError(null);
@@ -118,6 +197,22 @@ export function SelectDrivePage() {
     },
   });
 
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    if (!savedSession?.loaded) return;
+
+    const key = driveAssetsQueryKey(category, year, month);
+    const cached = queryClient.getQueryData<DriveAsset[]>(key);
+    if (cached?.length) {
+      setAllAssets(cached);
+      setLoaded(true);
+      return;
+    }
+    loadMutation.mutate(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restore once on mount
+  }, []);
+
   const startMutation = useMutation({
     mutationFn: () => {
       const chosen = allAssets.filter((a) => selectedIds.has(a.file_id));
@@ -128,6 +223,7 @@ export function SelectDrivePage() {
         assets: chosen,
         marketing_objectives: objectives,
         channels: [platform],
+        visual_image_input_fidelity: inputFidelity,
       });
     },
     onSuccess: (data) => {
@@ -201,6 +297,7 @@ export function SelectDrivePage() {
         <h2 className="text-2xl font-semibold">① Seleziona da Drive</h2>
         <p className="mt-1 text-[var(--story-muted)]">
           Carica le foto da Drive, seleziona quelle da passare a Story AI e avvia la coda.
+          La selezione resta salvata finché non chiudi il browser.
         </p>
       </header>
 
@@ -268,6 +365,7 @@ export function SelectDrivePage() {
             onChange={(e) => {
               setCategory(e.target.value);
               setLoaded(false);
+              setAllAssets([]);
             }}
             className="w-full rounded-lg border border-[var(--story-border)] bg-[var(--story-bg)] px-3 py-2"
           >
@@ -288,6 +386,7 @@ export function SelectDrivePage() {
             onChange={(e) => {
               setYear(Number(e.target.value));
               setLoaded(false);
+              setAllAssets([]);
             }}
             className="w-full rounded-lg border border-[var(--story-border)] bg-[var(--story-bg)] px-3 py-2"
           />
@@ -299,6 +398,7 @@ export function SelectDrivePage() {
             onChange={(e) => {
               setMonth(Number(e.target.value));
               setLoaded(false);
+              setAllAssets([]);
             }}
             className="w-full rounded-lg border border-[var(--story-border)] bg-[var(--story-bg)] px-3 py-2"
           >
@@ -412,7 +512,7 @@ export function SelectDrivePage() {
             })}
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-3">
             <label className="space-y-1 text-sm">
               <span className="text-[var(--story-muted)]">Social destinazione</span>
               <select
@@ -433,6 +533,20 @@ export function SelectDrivePage() {
               >
                 <option value="post">Post (feed)</option>
                 <option value="story">Story (9:16)</option>
+              </select>
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-[var(--story-muted)]">Input fidelity (edit AI)</span>
+              <select
+                value={inputFidelity}
+                onChange={(e) => setInputFidelity(e.target.value)}
+                className="w-full rounded-lg border border-[var(--story-border)] bg-[var(--story-bg)] px-3 py-2"
+              >
+                {fidelityOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
             </label>
           </div>

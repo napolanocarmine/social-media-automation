@@ -47,6 +47,13 @@ class ApprovalRequest(BaseModel):
     )
 
 
+class ReprocessRequest(BaseModel):
+    visual_image_input_fidelity: str | None = Field(
+        default=None,
+        description="Override input_fidelity per questa rigenerazione (high | low).",
+    )
+
+
 class ApprovalFeedbackTagsResponse(BaseModel):
     tags: dict[str, str]
 
