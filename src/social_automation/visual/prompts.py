@@ -26,6 +26,8 @@ from social_automation.visual.models import ImageEditPlan
 _IMAGE_EDIT_API_PREAMBLE_HIGH = (
     "EDIT the attached photograph. Do not generate a new image. "
     "Preserve all original pixels, logos, flags, food layers, and background bokeh. "
+    "The main subject (food, flag, fries) must be crisp and in focus — apply selective "
+    "sharpening on the product; only the background stays soft. "
     "Crop only by reframing — do not rebuild the scene for the target aspect ratio.\n\n"
 )
 
@@ -107,7 +109,8 @@ def format_edit_plan_for_prompt(
     preserve = ", ".join(plan.preserve_elements) if plan.preserve_elements else "n.d."
     sharpness = ", ".join(plan.sharpness_targets) if plan.sharpness_targets else "n.d."
     background = (
-        "mantieni morbido/sfocato, senza profondità di campo artificiale"
+        "mantieni morbido/sfocato; il SOGGETTO (cibo/bandierina) deve essere nitido — "
+        "sharpening selettivo obbligatorio sui target, non confondere con DOF artificiale"
         if plan.preserve_soft_background
         else "n.d."
     )
@@ -128,6 +131,16 @@ def format_edit_plan_for_prompt(
     else:
         tone_line = adjustments
 
+    sharpness_line = ""
+    if la.sharpness > 0.001:
+        sharpness_line = (
+            f"sharpness={la.sharpness:+.3f} — applica nitidezza selettiva sui target"
+        )
+    elif sharpness != "n.d.":
+        sharpness_line = (
+            f"nitidezza selettiva obbligatoria su: {sharpness} (soggetto a fuoco, non morbido)"
+        )
+
     lines = [
         "Piano editing per questa foto (analisi preliminare)",
         f"- Soggetti: {subjects}",
@@ -144,6 +157,8 @@ def format_edit_plan_for_prompt(
             f"- Regolazioni tono: {tone_line}",
         ]
     )
+    if sharpness_line:
+        lines.append(f"- Nitidezza (parametri): {sharpness_line}")
     if plan.reasoning:
         lines.append(f"- Analisi: {plan.reasoning}")
 
@@ -166,8 +181,8 @@ def format_edit_plan_for_prompt(
                 "1. Analisi composizione (già fornita sopra)",
                 f"2. Crop/reframe al formato {fmt} (solo taglio bordi, NON ricomporre la scena)",
                 "3. Regolazioni globali leggere (solo tono)",
-                "4. Contrasto / micro-contrasto",
-                "5. Nitidezza selettiva",
+                "4. Contrasto / micro-contrasto sul soggetto",
+                "5. Nitidezza selettiva sul prodotto (obbligatoria — soggetto nitido, sfondo bokeh)",
                 "6. Pulizia minima",
                 f"7. Export finale {fmt}",
             ]

@@ -36,6 +36,25 @@ def test_image_edit_plan_nested_light_adjustments() -> None:
     assert "light_adjustments" in plan.to_dict()
 
 
+def test_format_edit_plan_includes_sharpness_parameter() -> None:
+    plan = ImageEditPlan.from_dict(
+        {
+            "subjects": ["hamburger"],
+            "sharpness_targets": ["hamburger", "bandierina"],
+            "preserve_soft_background": True,
+            "light_adjustments": {"sharpness": 0.12, "exposure": 0.08},
+        }
+    )
+    text = format_edit_plan_for_prompt(
+        plan,
+        platform=Platform.INSTAGRAM,
+        media_format=MediaFormat.STORY,
+        hybrid_mode=False,
+    )
+    assert "sharpness=+0.120" in text
+    assert "soggetto a fuoco" in text.lower() or "nitido" in text.lower()
+
+
 def test_format_edit_plan_non_hybrid_tone_for_ai() -> None:
     plan = ImageEditPlan.from_dict(
         {
@@ -51,7 +70,7 @@ def test_format_edit_plan_non_hybrid_tone_for_ai() -> None:
     )
     assert "applica tu nell'edit" in text
     assert "applicati in post" not in text
-    assert "Crop al formato" in text
+    assert "Crop/reframe al formato" in text
 
 
 def test_format_edit_plan_hybrid_mode() -> None:

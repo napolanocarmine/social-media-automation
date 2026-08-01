@@ -26,6 +26,10 @@ def _compiler_system_message(settings: Settings) -> str:
         "NEVER allow regeneration of Story flag, toothpick logo, food ingredients, "
         "fries, or background bokeh — even when input_fidelity is low."
     )
+    parts.append(
+        "Main subject (food, flag) must be tack-sharp and in focus; "
+        "selective sharpening on product is required — only background stays soft."
+    )
     if fidelity == "high":
         parts.append(
             "Strict preservation mode: crop by reframing only, no scene recomposition."

@@ -49,7 +49,7 @@ def build_image_edit_plan_user_prompt(
         '    "exposure": 0.08,\n'
         '    "contrast": 0.04,\n'
         '    "saturation": 0.0,\n'
-        '    "sharpness": 0.0\n'
+        '    "sharpness": 0.12\n'
         "  },\n"
         '  "reasoning": "breve sintesi analisi in italiano"\n'
         "}\n"
@@ -57,10 +57,11 @@ def build_image_edit_plan_user_prompt(
         "- Priorità crop (KB §16): persone > momenti condivisi > Peppe > food > ambiente\n"
         "- crop_plan deve essere specifico per QUESTA foto (posizione soggetti, cosa tagliare, cosa tenere)\n"
         "- sharpness_targets: adattivi (es. volto+cibo se c'è una persona; solo cibo se piatto statico)\n"
-        "- preserve_soft_background: true se lo sfondo è già sfocato/bokeh\n"
+        "- preserve_soft_background: true se lo sfondo è già sfocato/bokeh "
+        "(ma il soggetto/cibo deve restare nitido)\n"
         "- preserve_elements: elenca logo, bandierina, patatine e altri elementi brand visibili\n"
         "- light_adjustments: SOLO numeri float (mai frasi). exposure/contrast/saturation tra -0.15 e 0.15; "
-        "sharpness 0.0-0.3. Per +0.2 EV circa usa exposure ~0.08-0.12\n"
+        "sharpness 0.08-0.18 per piatti food (soggetto a fuoco). Per +0.2 EV circa usa exposure ~0.08-0.12\n"
         "- Tutti i campi testuali in italiano\n"
         f"FORMATO TARGET: {fmt}\n"
         f"CANALI: {channels_label(ch)}\n"

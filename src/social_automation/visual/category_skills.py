@@ -24,16 +24,17 @@ _FOOD = CategorySkill(
     label="Food & drink",
     edit_plan_hints=(
         "Skill categoria FOOD:\n"
-        "- Se la foto è un piatto statico (solo cibo): sharpness_targets = solo cibo/hamburger; "
-        "sfondo morbido se già bokeh.\n"
+        "- Se la foto è un piatto statico (solo cibo): sharpness_targets = hamburger, bandierina, patatine; "
+        "light_adjustments.sharpness ~0.10-0.15; soggetto deve essere nitido.\n"
         "- Se c'è una persona che mangia: sharpness_targets = volto + cibo; crop che mantiene "
         "mani e testa visibili.\n"
         "- preserve_elements: bandierina, logo, patatine, elementi brand sempre elencati se visibili.\n"
         "- Regolazioni leggere (+0.2 EV equivalente); look Lightroom, non food magazine HDR."
     ),
     edit_prompt_hints=(
-        "Categoria FOOD: nitidezza selettiva sul cibo (e volto se presente). "
-        "Non rigenerare logo/bandierina. Sfondo naturale morbido."
+        "Categoria FOOD: nitidezza selettiva sul cibo, bandierina e patatine — "
+        "soggetto a fuoco e nitido, sfondo bokeh morbido. "
+        "Non rigenerare logo/bandierina."
     ),
 )
 

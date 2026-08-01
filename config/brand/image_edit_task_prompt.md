@@ -30,9 +30,12 @@ lieve aumento esposizione (+0,2 EV circa)
 lieve recupero delle ombre
 lieve incremento contrasto
 lieve incremento micro-contrasto sul soggetto
-lieve nitidezza selettiva su {subject_short}
-riduzione di eventuali piccole distrazioni
-pulizia minima dell'immagine
+
+Nitidezza (priorità sul prodotto)
+Il soggetto principale ({subject_short}, bandierina, patatine se presenti) deve essere nitido e a fuoco.
+Applica nitidezza selettiva sul prodotto — recupera dettaglio se leggermente morbido nell'originale.
+Lo sharpening sul soggetto NON è profondità di campo artificiale: lo sfondo resta bokeh.
+Solo lo sfondo fuori fuoco resta morbido; il cibo no.
 
 Correzioni vietate
 nessun HDR
