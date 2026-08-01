@@ -10,13 +10,22 @@ Esegui soltanto un editing fotografico professionale e realistico.
 Canale
 {channels}
 
-Crop
-Adatta al formato {format}
-Mantieni {subject} protagonista
-Elimina solo lo spazio superfluo
-Mantieni l'equilibrio della composizione
+Crop (solo reframing — NON rigenerare)
+Adatta al formato {format} tramite crop/reframe della foto esistente.
+NON ricomporre la scena per riempire il nuovo aspect ratio.
+NON spostare, ridisegnare o rigenerare burger, patatine, bandierina o oggetti di scena.
+Elimina solo lo spazio superfluo ai bordi.
+Mantieni {subject} protagonista nella stessa posizione relativa.
+Mantieni l'equilibrio della composizione originale.
 
-Correzioni consentite
+Elementi immutabili (priorità assoluta)
+bandierina Story con logo e testo (identica, leggibile, stessa posizione)
+patatine e contorni se presenti (stessa forma, quantità e posizione)
+ingredienti del burger/piatto (stessi strati, stesse proporzioni)
+sfondo bokeh esistente (non sostituire né rifare)
+bottiglie/bicchieri sfocati in background (se presenti, invariati)
+
+Correzioni consentite (solo tono e nitidezza)
 lieve aumento esposizione (+0,2 EV circa)
 lieve recupero delle ombre
 lieve incremento contrasto
@@ -33,12 +42,13 @@ nessun look pubblicitario
 nessun colore artificiale
 nessuna modifica agli ingredienti
 nessuna modifica alla forma del soggetto
-nessuna modifica degli elementi laterali (es. contorno)
-nessuna modifica della bandierina
+nessuna modifica degli elementi laterali (es. contorno, patatine)
+nessuna modifica della bandierina o del logo
 nessuna sostituzione dello sfondo
 nessuna profondità di campo artificiale
 nessun aumento artificiale della profondità di campo se lo sfondo è già sfocato
 nessuna generazione AI di nuovi elementi
+nessuna ricomposizione della scena per il crop
 
 Obiettivo finale
 L'immagine deve sembrare:

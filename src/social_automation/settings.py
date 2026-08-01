@@ -300,11 +300,11 @@ class Settings(BaseSettings):
         description="Dimensione output image edit (opzionale). Preferire vuoto/auto per preservare la foto originale.",
     )
     visual_image_input_fidelity: str = Field(
-        default="low",
+        default="high",
         description=(
             "input_fidelity per gpt-image-1/1.5 (Responses tool o images_edits). "
-            "low = edit più visibile (generazione parziale); high = preserva pixel originali. "
-            "Non usato con gpt-image-2."
+            "Solo valori API: high | low (nessun intermedio). "
+            "high = preserva pixel (bandierine/loghi); low = edit più aggressivo."
         ),
     )
     visual_image_quality: str = Field(

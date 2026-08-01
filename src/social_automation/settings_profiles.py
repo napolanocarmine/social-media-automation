@@ -96,7 +96,7 @@ _PROFILE_PRESETS: dict[str, dict[str, Any]] = {
         "visual_precrop_before_api": False,
         "visual_skip_post_crop": True,
         "visual_disable_pillow_retouch": True,
-        "visual_image_input_fidelity": "low",
+        "visual_image_input_fidelity": "high",
         "visual_image_quality": "high",
         "visual_edit_plan_model": "gpt-4o",
         "visual_jpeg_export_quality": 95,

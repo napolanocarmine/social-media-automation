@@ -21,6 +21,15 @@ _COMPILER_SYSTEM_BASE = (
 
 def _compiler_system_message(settings: Settings) -> str:
     parts = [_COMPILER_SYSTEM_BASE]
+    fidelity = (settings.visual_image_input_fidelity or "high").strip().lower()
+    parts.append(
+        "NEVER allow regeneration of Story flag, toothpick logo, food ingredients, "
+        "fries, or background bokeh — even when input_fidelity is low."
+    )
+    if fidelity == "high":
+        parts.append(
+            "Strict preservation mode: crop by reframing only, no scene recomposition."
+        )
     if settings.visual_precrop_before_api:
         parts.append(
             "If the input says crop is already done, do NOT ask for cropping."

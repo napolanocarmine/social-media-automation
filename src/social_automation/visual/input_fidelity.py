@@ -7,8 +7,8 @@ from social_automation.settings import Settings
 INPUT_FIDELITY_OPTIONS: tuple[str, ...] = ("high", "low")
 
 INPUT_FIDELITY_LABELS: dict[str, str] = {
-    "high": "Alta — preserva pixel originali (edit sottile)",
-    "low": "Bassa — generazione parziale più visibile",
+    "high": "Alta — preserva pixel originali (consigliata per bandierine/loghi)",
+    "low": "Bassa — più libertà AI (può rigenerare parti della scena)",
 }
 
 

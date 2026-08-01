@@ -241,8 +241,8 @@ export function ApprovePage() {
   const categories = categoriesQuery.data?.categories ?? ["tutte"];
   const feedbackTags = feedbackTagsQuery.data ?? {};
   const fidelityOptions = pipelineQuery.data?.input_fidelity_options ?? [
-    { value: "low", label: "Bassa — generazione parziale più visibile" },
-    { value: "high", label: "Alta — preserva pixel originali (edit sottile)" },
+    { value: "high", label: "Alta — preserva pixel (consigliata per bandierine/loghi)" },
+    { value: "low", label: "Bassa — più libertà AI (può rigenerare parti della scena)" },
   ];
 
   return (

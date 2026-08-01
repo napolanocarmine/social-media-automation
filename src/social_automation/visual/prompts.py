@@ -23,10 +23,26 @@ from social_automation.settings import Settings, load_settings, repo_root
 from social_automation.visual.category_skills import format_category_skill_for_image_edit
 from social_automation.visual.models import ImageEditPlan
 
-_IMAGE_EDIT_API_PREAMBLE = (
+_IMAGE_EDIT_API_PREAMBLE_HIGH = (
     "EDIT the attached photograph. Do not generate a new image. "
-    "Preserve all original pixels and composition.\n\n"
+    "Preserve all original pixels, logos, flags, food layers, and background bokeh. "
+    "Crop only by reframing — do not rebuild the scene for the target aspect ratio.\n\n"
 )
+
+_IMAGE_EDIT_API_PREAMBLE_LOW = (
+    "EDIT the attached photograph. Do not generate a new image from scratch. "
+    "You may adjust tone and selective sharpness, but NEVER alter or regenerate: "
+    "Story flag/toothpick logo, food ingredients, fries, or background layout. "
+    "Crop by reframing only — do not recompose the scene.\n\n"
+)
+
+
+def image_edit_api_preamble(settings: Settings | None = None) -> str:
+    s = settings or load_settings()
+    fidelity = (s.visual_image_input_fidelity or "high").strip().lower()
+    if fidelity == "low":
+        return _IMAGE_EDIT_API_PREAMBLE_LOW
+    return _IMAGE_EDIT_API_PREAMBLE_HIGH
 
 _SUBJECT_ARTICLE: dict[str, tuple[str, str]] = {
     "persona": ("la persona", "persona"),
@@ -148,8 +164,8 @@ def format_edit_plan_for_prompt(
                 "",
                 "Esegui in ordine:",
                 "1. Analisi composizione (già fornita sopra)",
-                f"2. Crop al formato {fmt}",
-                "3. Regolazioni globali leggere",
+                f"2. Crop/reframe al formato {fmt} (solo taglio bordi, NON ricomporre la scena)",
+                "3. Regolazioni globali leggere (solo tono)",
                 "4. Contrasto / micro-contrasto",
                 "5. Nitidezza selettiva",
                 "6. Pulizia minima",
@@ -344,7 +360,7 @@ def build_image_edit_user_prompt(
             channels=channels,
             edit_plan=edit_plan,
         )
-        parts = [_IMAGE_EDIT_API_PREAMBLE + body]
+        parts = [image_edit_api_preamble(s) + body]
         if edit_plan and edit_plan.has_content:
             parts.append(
                 format_edit_plan_for_prompt(
