@@ -3,6 +3,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Pagination } from "../components/Pagination";
 import {
+  channelsForBatch,
+  FormatPlatformFilters,
+  platformForApi,
+} from "../components/FormatPlatformFilters";
+import {
   driveAssetsQueryKey,
   loadDriveSession,
   saveDriveSession,
@@ -218,11 +223,11 @@ export function SelectDrivePage() {
       const chosen = allAssets.filter((a) => selectedIds.has(a.file_id));
       return startAiBatch({
         category,
-        platform,
+        platform: platformForApi(format, platform),
         media_format: format,
         assets: chosen,
         marketing_objectives: objectives,
-        channels: [platform],
+        channels: channelsForBatch(format, platform),
         visual_image_input_fidelity: inputFidelity,
       });
     },
@@ -307,55 +312,52 @@ export function SelectDrivePage() {
         </p>
       )}
 
-      <div
-        className={[
-          "space-y-2 rounded-lg border px-4 py-3 text-sm",
-          hasTokenProblem
-            ? "border-amber-500/50 bg-amber-500/10"
-            : "border-[var(--story-border)] bg-[var(--story-surface)]",
-        ].join(" ")}
-      >
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-[var(--story-muted)]">
-            Google Drive: {driveConnectionLabel()}
-            {oauthStatus?.token_source ? ` (sorgente: ${oauthStatus.token_source})` : ""}
-          </span>
-          <button
-            type="button"
-            onClick={handleReconnectGoogle}
-            className="rounded-lg bg-[var(--story-accent)] px-3 py-1.5 text-xs font-semibold text-black"
-          >
-            Riconnetti Google Drive
-          </button>
+      {hasTokenProblem && (
+        <div className="space-y-2 rounded-lg border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-amber-100">
+              Connessione Google Drive scaduta o revocata ({driveConnectionLabel()}
+              {oauthStatus?.token_source ? ` · sorgente: ${oauthStatus.token_source}` : ""}).
+            </span>
+            <button
+              type="button"
+              onClick={handleReconnectGoogle}
+              className="rounded-lg bg-[var(--story-accent)] px-3 py-1.5 text-xs font-semibold text-black"
+            >
+              Riconnetti Google Drive
+            </button>
+          </div>
+          {!oauthWebAvailable && (
+            <p className="text-xs text-amber-200/90">
+              Se il pulsante non funziona, configura{" "}
+              <code className="rounded bg-black/20 px-1">GOOGLE_CREDENTIALS_JSON</code> (OAuth{" "}
+              <strong>Web application</strong>) e{" "}
+              <code className="rounded bg-black/20 px-1">GOOGLE_REDIRECT_URI</code> su Vercel.
+              In locale:{" "}
+              <code className="rounded bg-black/20 px-1">
+                python3 -m social_automation drive-auth
+              </code>
+              .
+            </p>
+          )}
+          {oauthStatus?.redirect_uri && (
+            <p className="text-xs text-[var(--story-muted)] break-all">
+              Callback OAuth (deve essere identico in Google Cloud Console → Authorized redirect
+              URIs):{" "}
+              <code className="rounded bg-black/20 px-1 text-amber-100/90">
+                {oauthStatus.redirect_uri}
+              </code>
+            </p>
+          )}
+          {oauthStatusQuery.isError && (
+            <p className="text-xs text-amber-200/90">
+              Endpoint OAuth non raggiungibile — il deploy potrebbe non essere aggiornato. Verifica{" "}
+              <code className="rounded bg-black/20 px-1">/api/v1/health</code> (campo{" "}
+              <code className="rounded bg-black/20 px-1">api_features</code>).
+            </p>
+          )}
         </div>
-        {!oauthWebAvailable && (
-          <p className="text-xs text-amber-200/90">
-            Se il pulsante non funziona, configura{" "}
-            <code className="rounded bg-black/20 px-1">GOOGLE_CREDENTIALS_JSON</code> (OAuth{" "}
-            <strong>Web application</strong>) e{" "}
-            <code className="rounded bg-black/20 px-1">GOOGLE_REDIRECT_URI</code> su Vercel.
-            In locale:{" "}
-            <code className="rounded bg-black/20 px-1">python3 -m social_automation drive-auth</code>
-            .
-          </p>
-        )}
-        {oauthStatus?.redirect_uri && (
-          <p className="text-xs text-[var(--story-muted)] break-all">
-            Callback OAuth (deve essere identico in Google Cloud Console → Authorized redirect
-            URIs):{" "}
-            <code className="rounded bg-black/20 px-1 text-amber-100/90">
-              {oauthStatus.redirect_uri}
-            </code>
-          </p>
-        )}
-        {oauthStatusQuery.isError && (
-          <p className="text-xs text-amber-200/90">
-            Endpoint OAuth non raggiungibile — il deploy potrebbe non essere aggiornato. Verifica{" "}
-            <code className="rounded bg-black/20 px-1">/api/v1/health</code> (campo{" "}
-            <code className="rounded bg-black/20 px-1">api_features</code>).
-          </p>
-        )}
-      </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-4">
         <label className="space-y-1 text-sm md:col-span-2">
@@ -513,28 +515,12 @@ export function SelectDrivePage() {
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
-            <label className="space-y-1 text-sm">
-              <span className="text-[var(--story-muted)]">Social destinazione</span>
-              <select
-                value={platform}
-                onChange={(e) => setPlatform(e.target.value)}
-                className="w-full rounded-lg border border-[var(--story-border)] bg-[var(--story-bg)] px-3 py-2"
-              >
-                <option value="instagram">Instagram</option>
-                <option value="facebook">Facebook</option>
-              </select>
-            </label>
-            <label className="space-y-1 text-sm">
-              <span className="text-[var(--story-muted)]">Formato export</span>
-              <select
-                value={format}
-                onChange={(e) => setFormat(e.target.value)}
-                className="w-full rounded-lg border border-[var(--story-border)] bg-[var(--story-bg)] px-3 py-2"
-              >
-                <option value="post">Post (feed)</option>
-                <option value="story">Story (9:16)</option>
-              </select>
-            </label>
+            <FormatPlatformFilters
+              format={format}
+              platform={platform}
+              onFormatChange={setFormat}
+              onPlatformChange={setPlatform}
+            />
             <label className="space-y-1 text-sm">
               <span className="text-[var(--story-muted)]">Input fidelity (edit AI)</span>
               <select

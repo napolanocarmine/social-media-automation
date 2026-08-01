@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ImageCompare } from "../components/ImageCompare";
 import { ErrorNotice } from "../components/ErrorNotice";
+import { FormatPlatformFilters, platformForApi } from "../components/FormatPlatformFilters";
 import { imageReviewCardClass, imageReviewGridClass } from "../components/imageReviewLayout";
 import { Pagination } from "../components/Pagination";
 import {
@@ -205,10 +206,12 @@ export function ApprovePage() {
     queryFn: fetchApprovalFeedbackTags,
   });
 
+  const apiPlatform = platformForApi(format, platform);
+
   const listQuery = useQuery({
-    queryKey: ["images", "pending-approval", platform, format, category, page],
+    queryKey: ["images", "pending-approval", apiPlatform, format, category, page],
     queryFn: () =>
-      fetchPendingApproval({ platform, format, category, page, pageSize: 20 }),
+      fetchPendingApproval({ platform: apiPlatform, format, category, page, pageSize: 20 }),
   });
 
   const mutation = useMutation({
@@ -256,34 +259,18 @@ export function ApprovePage() {
       </header>
 
       <div className="grid gap-3 md:grid-cols-4">
-        <label className="space-y-1 text-sm">
-          <span className="text-[var(--story-muted)]">Social</span>
-          <select
-            value={platform}
-            onChange={(e) => {
-              setPlatform(e.target.value);
-              setPage(0);
-            }}
-            className="w-full rounded-lg border border-[var(--story-border)] bg-[var(--story-bg)] px-3 py-2"
-          >
-            <option value="instagram">Instagram</option>
-            <option value="facebook">Facebook</option>
-          </select>
-        </label>
-        <label className="space-y-1 text-sm">
-          <span className="text-[var(--story-muted)]">Formato</span>
-          <select
-            value={format}
-            onChange={(e) => {
-              setFormat(e.target.value);
-              setPage(0);
-            }}
-            className="w-full rounded-lg border border-[var(--story-border)] bg-[var(--story-bg)] px-3 py-2"
-          >
-            <option value="post">Post (feed)</option>
-            <option value="story">Story (9:16)</option>
-          </select>
-        </label>
+        <FormatPlatformFilters
+          format={format}
+          platform={platform}
+          onFormatChange={(next) => {
+            setFormat(next);
+            setPage(0);
+          }}
+          onPlatformChange={(next) => {
+            setPlatform(next);
+            setPage(0);
+          }}
+        />
         <label className="space-y-1 text-sm">
           <span className="text-[var(--story-muted)]">Categoria</span>
           <select

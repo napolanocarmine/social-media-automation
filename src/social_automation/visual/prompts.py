@@ -260,6 +260,15 @@ def _render_image_edit_task_prompt(
             "\n\nImportante: lo sfondo è già sfocato — "
             "non aumentare la profondità di campo artificiale."
         )
+    if media_format == MediaFormat.STORY:
+        out += (
+            "\n\nFormato Story (obbligatorio — output dell'edit AI):\n"
+            "- Canvas verticale 9:16, pixel target 1080×1920.\n"
+            "- Composizione full-bleed: riempi tutto il frame, zero bande nere o aree vuote ai bordi.\n"
+            "- Reframe intelligente della foto esistente per il verticale (non un semplice taglio centrale).\n"
+            "- Bandierina, logo e soggetto principale restano visibili, nitidi e nella stessa identità visiva.\n"
+            "- L'output deve essere già pronto per Instagram/Facebook Story senza ulteriori crop."
+        )
     return out.strip()
 
 

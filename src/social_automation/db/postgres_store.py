@@ -219,12 +219,22 @@ def record_render_artifacts(
             path=str(image_path),
         )
         platform = str(payload.get("platform", "")).strip().lower()
-        flag_col = _IMAGE_RENDER_FLAG_BY_KEY.get((platform, media_format_value))
-        if flag_col:
+        if media_format_value == MediaFormat.STORY.value:
             conn.execute(
-                f"UPDATE images SET {flag_col} = TRUE, updated_at = NOW() WHERE id = %s",
+                """
+                UPDATE images
+                SET render_ig_story = TRUE, render_fb_story = TRUE, updated_at = NOW()
+                WHERE id = %s
+                """,
                 (image_id,),
             )
+        else:
+            flag_col = _IMAGE_RENDER_FLAG_BY_KEY.get((platform, media_format_value))
+            if flag_col:
+                conn.execute(
+                    f"UPDATE images SET {flag_col} = TRUE, updated_at = NOW() WHERE id = %s",
+                    (image_id,),
+                )
 
         conn.execute(
             """
@@ -327,12 +337,22 @@ def record_processed_artifacts(
             path=str(image_path),
         )
         platform = str(payload.get("platform", "")).strip().lower()
-        flag_col = _IMAGE_RENDER_FLAG_BY_KEY.get((platform, media_format_value))
-        if flag_col:
+        if media_format_value == MediaFormat.STORY.value:
             conn.execute(
-                f"UPDATE images SET {flag_col} = TRUE, updated_at = NOW() WHERE id = %s",
+                """
+                UPDATE images
+                SET render_ig_story = TRUE, render_fb_story = TRUE, updated_at = NOW()
+                WHERE id = %s
+                """,
                 (image_id,),
             )
+        else:
+            flag_col = _IMAGE_RENDER_FLAG_BY_KEY.get((platform, media_format_value))
+            if flag_col:
+                conn.execute(
+                    f"UPDATE images SET {flag_col} = TRUE, updated_at = NOW() WHERE id = %s",
+                    (image_id,),
+                )
 
         retouch_text = json.dumps(retouch_json, ensure_ascii=False) if retouch_json else None
         copy_text = json.dumps(copy_json, ensure_ascii=False) if copy_json else None

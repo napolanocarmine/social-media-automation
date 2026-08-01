@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, time
+from datetime import date, datetime, time
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -148,6 +148,111 @@ def suggest_editorial_slot(
     }
 
 
+STORY_PUBLISH_PLATFORMS = (Platform.INSTAGRAM, Platform.FACEBOOK)
+
+
+def _save_plan_for_platform(
+    db_path: Path,
+    *,
+    image_id: int,
+    platform: Platform,
+    media_format: MediaFormat,
+    row: dict[str, Any],
+    image_name: str,
+    scheduled_for: datetime,
+    caption: str | None,
+    settings: Settings,
+) -> dict[str, Any]:
+    pack = get_copy_pack(db_path, image_id=image_id)
+    cap_from_pack = caption_for_platform(pack, platform=platform, media_format=media_format)
+    if media_format == MediaFormat.POST and not (caption or "").strip() and not cap_from_pack:
+        raise ValueError("Genera il copy prima di pianificare un post.")
+
+    latest = latest_plan_for_image(db_path, image_id=image_id, platform=platform)
+    event_type = "planned"
+    if latest is not None and str(latest.get("event_type", "")).lower() in {
+        "planned",
+        "rescheduled",
+    }:
+        event_type = "rescheduled"
+    prev_ext = ""
+    if latest is not None and str(latest.get("event_type", "")).lower() in {
+        "planned",
+        "rescheduled",
+    }:
+        prev_ext = (str(latest.get("external_id") or "")).strip()
+
+    if media_format == MediaFormat.STORY:
+        plan_detail = planning_detail_with_caption(media_format=MediaFormat.STORY) or None
+    else:
+        cap_text = (caption or "").strip() or cap_from_pack
+        plan_detail = (
+            planning_detail_with_caption(cap_text, media_format=MediaFormat.POST) or (cap_text or None)
+        )
+
+    event_id = add_planning_event(
+        db_path,
+        image_id=image_id,
+        platform=platform,
+        event_type=event_type,
+        scheduled_for=scheduled_for,
+        detail=plan_detail,
+    )
+
+    cap_publish = (
+        ""
+        if media_format == MediaFormat.STORY
+        else ((caption or "").strip() or cap_from_pack or image_name)
+    )
+    meta_fb_ok = False
+    ig_note = False
+    if settings.meta_page_access_token.strip():
+        meta_client = MetaClient(
+            settings.meta_page_access_token.strip(),
+            settings.meta_ig_user_id.strip(),
+            graph_version=(settings.meta_graph_version or "v22.0").strip(),
+            settings=settings,
+        )
+        resolved = resolve_media_file_path(str(row.get("path", "")))
+        image_file = resolved if resolved is not None else Path(str(row.get("path", "")))
+        if (
+            platform == Platform.FACEBOOK
+            and media_format == MediaFormat.POST
+            and image_file.is_file()
+        ):
+            if prev_ext:
+                meta_client.delete_graph_object(prev_ext)
+            ext_id = meta_client.schedule_facebook_photo(
+                image_file,
+                cap_publish,
+                publish_at=scheduled_for,
+            )
+            update_planning_event_external_id(db_path, event_id=event_id, external_id=ext_id)
+            meta_fb_ok = True
+        elif platform == Platform.INSTAGRAM and media_format == MediaFormat.POST:
+            ig_note = True
+
+    lines = [f"Pianificazione salvata per #{image_id} ({platform.value})."]
+    if meta_fb_ok:
+        lines.append("Programmazione nativa su Meta (Facebook Page) creata.")
+    if media_format == MediaFormat.STORY:
+        lines.append(
+            "Story: orario salvato nel database. Usa dispatch-scheduled all'orario per pubblicare."
+        )
+    elif platform == Platform.INSTAGRAM and ig_note and media_format == MediaFormat.POST:
+        lines.append(
+            "Instagram: data salvata nel database. Usa dispatch-scheduled all'orario pianificato."
+        )
+
+    return {
+        "message": "\n".join(lines),
+        "event_id": event_id,
+        "image_id": image_id,
+        "platform": platform.value,
+        "scheduled_for": scheduled_for.isoformat(),
+    }
+
+
 def save_plan(
     db_path: Path,
     *,
@@ -174,115 +279,52 @@ def save_plan(
         tz_clean = (story_timezone or "").strip() or app_timezone_name(s)
         ZoneInfo(tz_clean)
         tl = story_time_local or "10:00"
-        add_story_schedule_rule(
-            db_path,
-            image_id=image_id,
-            platform=platform,
-            schedule_mode="weekly",
-            timezone_name=tz_clean,
-            weekday=int(story_weekday or 0),
-            time_local=tl,
-            detail=None,
-        )
+        for plat in STORY_PUBLISH_PLATFORMS:
+            add_story_schedule_rule(
+                db_path,
+                image_id=image_id,
+                platform=plat,
+                schedule_mode="weekly",
+                timezone_name=tz_clean,
+                weekday=int(story_weekday or 0),
+                time_local=tl,
+                detail=None,
+            )
         return {
             "message": (
-                "Regola story ricorrente creata. Esegui dispatch-scheduled all'orario indicato."
+                "Regola story ricorrente creata su Instagram e Facebook. "
+                "Esegui dispatch-scheduled all'orario indicato."
             ),
             "image_id": image_id,
-            "platform": platform.value,
+            "platform": "instagram,facebook",
         }
 
     if plan_date is None or plan_time is None:
         raise ValueError("Data e ora obbligatorie per la pianificazione")
 
     scheduled_for = combine_app(plan_date, plan_time, s)
-    pack = get_copy_pack(db_path, image_id=image_id)
-    cap_from_pack = caption_for_platform(pack, platform=platform, media_format=media_format)
-    if media_format == MediaFormat.POST and not (caption or "").strip() and not cap_from_pack:
-        raise ValueError("Genera il copy prima di pianificare un post.")
-
-    latest = latest_plan_for_image(db_path, image_id=image_id, platform=platform)
-    event_type = "planned"
-    if latest is not None and str(latest.get("event_type", "")).lower() in {
-        "planned",
-        "rescheduled",
-    }:
-        event_type = "rescheduled"
-    prev_ext = ""
-    if latest is not None and str(latest.get("event_type", "")).lower() in {
-        "planned",
-        "rescheduled",
-    }:
-        prev_ext = (str(latest.get("external_id") or "")).strip()
-
-    story_detail = None
-    if media_format == MediaFormat.STORY:
-        story_detail = planning_detail_with_caption(media_format=MediaFormat.STORY) or None
-    else:
-        cap_text = (caption or "").strip() or cap_from_pack
-        story_detail = (
-            planning_detail_with_caption(cap_text, media_format=MediaFormat.POST) or (cap_text or None)
-        )
-
-    event_id = add_planning_event(
-        db_path,
-        image_id=image_id,
-        platform=platform,
-        event_type=event_type,
-        scheduled_for=scheduled_for,
-        detail=story_detail,
-    )
-
-    cap_publish = (
-        ""
-        if media_format == MediaFormat.STORY
-        else ((caption or "").strip() or cap_from_pack or image_name)
-    )
-    meta_fb_ok = False
-    ig_note = False
-    if s.meta_page_access_token.strip():
-        meta_client = MetaClient(
-            s.meta_page_access_token.strip(),
-            s.meta_ig_user_id.strip(),
-            graph_version=(s.meta_graph_version or "v22.0").strip(),
+    platforms = list(STORY_PUBLISH_PLATFORMS) if media_format == MediaFormat.STORY else [platform]
+    results = [
+        _save_plan_for_platform(
+            db_path,
+            image_id=image_id,
+            platform=plat,
+            media_format=media_format,
+            row=row,
+            image_name=image_name,
+            scheduled_for=scheduled_for,
+            caption=caption,
             settings=s,
         )
-        resolved = resolve_media_file_path(str(row.get("path", "")))
-        image_file = resolved if resolved is not None else Path(str(row.get("path", "")))
-        if (
-            platform == Platform.FACEBOOK
-            and media_format == MediaFormat.POST
-            and image_file.is_file()
-        ):
-            if prev_ext:
-                meta_client.delete_graph_object(prev_ext)
-            ext_id = meta_client.schedule_facebook_photo(
-                image_file,
-                cap_publish,
-                publish_at=scheduled_for,
-            )
-            update_planning_event_external_id(db_path, event_id=event_id, external_id=ext_id)
-            meta_fb_ok = True
-        elif platform == Platform.INSTAGRAM and media_format == MediaFormat.POST:
-            ig_note = True
-
-    lines = [f"Pianificazione salvata per #{image_id}."]
-    if meta_fb_ok:
-        lines.append("Programmazione nativa su Meta (Facebook Page) creata.")
-    if media_format == MediaFormat.STORY:
-        lines.append(
-            "Story: orario salvato nel database. Usa dispatch-scheduled all'orario per pubblicare."
-        )
-    elif platform == Platform.INSTAGRAM and ig_note and media_format == MediaFormat.POST:
-        lines.append(
-            "Instagram: data salvata nel database. Usa dispatch-scheduled all'orario pianificato."
-        )
-
+        for plat in platforms
+    ]
+    if len(results) == 1:
+        return results[0]
     return {
-        "message": "\n".join(lines),
-        "event_id": event_id,
+        "message": "\n".join(r["message"] for r in results),
+        "event_id": results[0]["event_id"],
         "image_id": image_id,
-        "platform": platform.value,
+        "platform": "instagram,facebook",
         "scheduled_for": scheduled_for.isoformat(),
     }
 
@@ -316,14 +358,19 @@ def reschedule_plan(
         prev_ext = (str(latest.get("external_id") or "")).strip()
 
     detail = None
-    if media_format != MediaFormat.STORY:
+    if media_format == MediaFormat.STORY:
+        detail = planning_detail_with_caption(media_format=MediaFormat.STORY) or None
+    else:
         cap_text = (caption or "").strip()
         if not cap_text:
             pack = get_copy_pack(db_path, image_id=image_id)
             cap_text = caption_for_platform(pack, platform=platform, media_format=media_format)
         if media_format == MediaFormat.POST and not cap_text:
             raise ValueError("La caption è obbligatoria per un post.")
-        detail = planning_detail_with_caption(cap_text) or (cap_text or None)
+        detail = (
+            planning_detail_with_caption(cap_text, media_format=MediaFormat.POST)
+            or (cap_text or None)
+        )
 
     event_id = add_planning_event(
         db_path,

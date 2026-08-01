@@ -35,6 +35,7 @@ from social_automation.visual.pipeline_trace import (
 from social_automation.visual.postprocess import (
     copy_or_finalize_for_crop_mode,
     precrop_source_for_api,
+    resize_only_to_target_size,
 )
 from social_automation.visual.prompt_compiler import compile_image_edit_prompt
 from social_automation.visual.prompts import (
@@ -213,12 +214,14 @@ def _export_crop_only(
     *,
     crop_mode: str,
     jpeg_quality: int = 95,
+    allow_center_crop: bool = True,
 ) -> Path:
     return copy_or_finalize_for_crop_mode(
         source_path,
         dest_path,
         crop_mode,
         jpeg_quality=jpeg_quality,
+        allow_center_crop=allow_center_crop,
     )
 
 
@@ -439,8 +442,17 @@ def _run_ai_image_edit(
     else:
         method = "ai_edited"
 
+    story_no_center_crop = media_format == MediaFormat.STORY
     if skip_post_crop:
-        after_resize = api_dest
+        if story_no_center_crop:
+            after_resize = resize_only_to_target_size(
+                api_dest,
+                final_path,
+                crop_mode,
+                jpeg_quality=jpeg_q,
+            )
+        else:
+            after_resize = api_dest
     else:
         generated_path = api_dest
         resize_dest = final_path
@@ -458,6 +470,7 @@ def _run_ai_image_edit(
             resize_dest,
             crop_mode=crop_mode,
             jpeg_quality=jpeg_q,
+            allow_center_crop=not story_no_center_crop,
         )
 
     if hybrid and tone_adjustments:

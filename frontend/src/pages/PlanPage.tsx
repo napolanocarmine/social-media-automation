@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Pagination } from "../components/Pagination";
+import { FormatPlatformFilters, platformForApi } from "../components/FormatPlatformFilters";
 import {
   cancelPlan,
   createPlan,
@@ -90,14 +91,17 @@ function PlanWizard() {
     queryFn: fetchMarketingObjectives,
   });
 
+  const apiPlatform = platformForApi(format, platform);
+
   const listQuery = useQuery({
-    queryKey: ["images", "plannable", platform, format, category, page],
-    queryFn: () => fetchPlannableImages({ platform, format, category, page, pageSize: 10 }),
+    queryKey: ["images", "plannable", apiPlatform, format, category, page],
+    queryFn: () =>
+      fetchPlannableImages({ platform: apiPlatform, format, category, page, pageSize: 10 }),
   });
 
   const slotQuery = useQuery({
-    queryKey: ["plans", "suggest-slot", platform],
-    queryFn: () => suggestPlanSlot(platform),
+    queryKey: ["plans", "suggest-slot", apiPlatform],
+    queryFn: () => suggestPlanSlot(apiPlatform),
     enabled: step === 2 && format === "post",
   });
 
@@ -120,7 +124,7 @@ function PlanWizard() {
     mutationFn: () => {
       const body: Parameters<typeof createPlan>[0] = {
         image_id: selectedId!,
-        platform,
+        platform: apiPlatform,
         media_format: format,
       };
       if (format === "story" && storyKind === "weekly") {
@@ -320,36 +324,20 @@ function PlanWizard() {
       <h3 className="text-lg font-medium">Step 1 · Seleziona immagine</h3>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <label className="space-y-1 text-sm">
-          <span className="text-[var(--story-muted)]">Social</span>
-          <select
-            value={platform}
-            onChange={(e) => {
-              setPlatform(e.target.value);
-              setPage(0);
-              setSelectedId(null);
-            }}
-            className="w-full rounded-lg border border-[var(--story-border)] bg-[var(--story-bg)] px-3 py-2"
-          >
-            <option value="instagram">Instagram</option>
-            <option value="facebook">Facebook</option>
-          </select>
-        </label>
-        <label className="space-y-1 text-sm">
-          <span className="text-[var(--story-muted)]">Formato</span>
-          <select
-            value={format}
-            onChange={(e) => {
-              setFormat(e.target.value);
-              setPage(0);
-              setSelectedId(null);
-            }}
-            className="w-full rounded-lg border border-[var(--story-border)] bg-[var(--story-bg)] px-3 py-2"
-          >
-            <option value="post">Post</option>
-            <option value="story">Story</option>
-          </select>
-        </label>
+        <FormatPlatformFilters
+          format={format}
+          platform={platform}
+          onFormatChange={(next) => {
+            setFormat(next);
+            setPage(0);
+            setSelectedId(null);
+          }}
+          onPlatformChange={(next) => {
+            setPlatform(next);
+            setPage(0);
+            setSelectedId(null);
+          }}
+        />
         <label className="space-y-1 text-sm">
           <span className="text-[var(--story-muted)]">Categoria</span>
           <select
@@ -467,7 +455,8 @@ function PlanWizard() {
 
       {selectedId !== null && format === "story" ? (
         <p className="text-sm text-[var(--story-muted)]">
-          Story selezionata: #{selectedId}. Continua per impostare data/ora o regola settimanale.
+          Story selezionata: #{selectedId}. Verrà pubblicata su Instagram e Facebook. Continua per
+          impostare data/ora o regola settimanale.
         </p>
       ) : null}
 

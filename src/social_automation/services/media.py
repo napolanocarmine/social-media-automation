@@ -80,7 +80,7 @@ def maybe_persist_processed_media_to_blob(
     platform_key = (platform or "instagram").strip().lower() or "instagram"
     fmt = (media_format or "post").strip().lower()
     if fmt == "story":
-        blob_key = f"processed/stories/{platform_key}/{image_id}_story.jpg"
+        blob_key = f"processed/stories/{image_id}_story.jpg"
     else:
         blob_key = f"processed/{platform_key}/{image_id}.jpg"
 

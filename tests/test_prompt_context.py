@@ -86,6 +86,27 @@ def test_build_image_edit_prompt_uses_dedicated_task_template() -> None:
     assert "Story AI Assistant" in kb_instructions or "Story non vende" in kb_instructions
 
 
+def test_build_image_edit_user_prompt_story_requires_ai_canvas() -> None:
+    from social_automation.settings import Settings
+    from social_automation.visual.prompts import build_image_edit_user_prompt
+
+    review = {"reasoning": "story verticale", "suggested_format": "story_9_16"}
+    user = build_image_edit_user_prompt(
+        review=review,
+        business_category="food",
+        platform=Platform.INSTAGRAM,
+        media_format=MediaFormat.STORY,
+        content_pillar="food",
+        marketing_objectives=["Engagement"],
+        channels=[Platform.INSTAGRAM, Platform.FACEBOOK],
+        settings=Settings(visual_edit_include_kb=False, visual_hybrid_tone_pipeline=False),
+    )
+    assert "Story 9:16 (1080x1920)" in user
+    assert "1080×1920" in user
+    assert "full-bleed" in user
+    assert "senza ulteriori crop" in user
+
+
 def test_build_copy_prompt_includes_ui_params() -> None:
     cfg = load_story_agent_config()
     prompt = build_copy_user_prompt(

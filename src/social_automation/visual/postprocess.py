@@ -102,6 +102,58 @@ def precrop_source_for_api(
     return dest
 
 
+def resize_only_to_target_size(
+    source: Path,
+    dest: Path,
+    crop_mode: str,
+    *,
+    aspect_tolerance: float = 0.025,
+    jpeg_quality: int = DEFAULT_JPEG_EXPORT_QUALITY,
+) -> Path:
+    """
+    Ridimensiona alle dimensioni finali solo se l'aspect ratio è già corretto.
+
+    Non applica center crop: se il ratio diverge, lascia l'output AI invariato
+    (meglio rigenerare che tagliare aree della scena).
+    """
+    target_w, target_h = target_size_for_crop(crop_mode)
+    target_ratio = target_w / target_h
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with Image.open(source) as im:
+        rgb = normalize_image_orientation(im).convert("RGB")
+        w, h = rgb.size
+        if (w, h) == (target_w, target_h):
+            if source.resolve() != dest.resolve():
+                shutil.copy2(source, dest)
+            return dest
+        actual_ratio = w / h if h else target_ratio
+        ratio_delta = abs(actual_ratio - target_ratio) / target_ratio
+        if ratio_delta > aspect_tolerance:
+            _LOG.warning(
+                "Resize-only skipped %s: output AI %sx%s (ratio %.3f, atteso %.3f) — "
+                "nessun crop automatico; rigenera se necessario",
+                crop_mode,
+                w,
+                h,
+                actual_ratio,
+                target_ratio,
+            )
+            if source.resolve() != dest.resolve():
+                shutil.copy2(source, dest)
+            return dest
+        out = rgb.resize((target_w, target_h), Image.Resampling.LANCZOS)
+        _LOG.info(
+            "Post-process resize only %s: %sx%s → %sx%s",
+            crop_mode,
+            w,
+            h,
+            target_w,
+            target_h,
+        )
+        out.save(dest, format="JPEG", quality=jpeg_quality, optimize=True)
+    return dest
+
+
 def finalize_image_for_crop_mode(
     source: Path,
     dest: Path,
@@ -109,6 +161,7 @@ def finalize_image_for_crop_mode(
     *,
     aspect_tolerance: float = 0.025,
     jpeg_quality: int = DEFAULT_JPEG_EXPORT_QUALITY,
+    allow_center_crop: bool = True,
 ) -> Path:
     """
     Normalizza dimensioni per il formato social.
@@ -135,6 +188,18 @@ def finalize_image_for_crop_mode(
                 target_w,
                 target_h,
             )
+        elif not allow_center_crop:
+            _LOG.warning(
+                "Post-process center crop disabilitato %s: API %sx%s (ratio %.3f) — "
+                "output AI lasciato invariato",
+                crop_mode,
+                w,
+                h,
+                actual_ratio,
+            )
+            if source.resolve() != dest.resolve():
+                shutil.copy2(source, dest)
+            return dest
         else:
             out = _center_crop_to_aspect(rgb, target_w, target_h)
             _LOG.warning(
@@ -157,6 +222,7 @@ def copy_or_finalize_for_crop_mode(
     crop_mode: str,
     *,
     jpeg_quality: int = DEFAULT_JPEG_EXPORT_QUALITY,
+    allow_center_crop: bool = True,
 ) -> Path:
     """Se il file è già alle dimensioni finali, copia senza ricodificare."""
     target_w, target_h = target_size_for_crop(crop_mode)
@@ -171,4 +237,5 @@ def copy_or_finalize_for_crop_mode(
         dest,
         crop_mode,
         jpeg_quality=jpeg_quality,
+        allow_center_crop=allow_center_crop,
     )

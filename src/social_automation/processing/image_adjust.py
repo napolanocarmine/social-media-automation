@@ -33,8 +33,9 @@ def crop_mode_for_platform(platform: Platform, media_format: MediaFormat) -> str
 
 
 # Dimensioni API OpenAI image edit (Responses + Images): 1024x1024, 1024x1536, 1536x1024, auto.
-# Per IG 4:5 usare 1024x1536 (2:3) + post-crop Pillow. Per story 9:16 usare auto
-# (con pre-crop a 9:16) + finalize a 1080x1920 — 1024x1792 non è più accettato.
+# Per IG 4:5 usare 1024x1536 (2:3) + post-crop Pillow se VISUAL_SKIP_POST_CROP=false.
+# Per story 9:16 usare auto: l'edit AI deve produrre il verticale 1080×1920 nel prompt
+# (resize-only in post se il ratio è già 9:16, mai center crop automatico).
 SUPPORTED_IMAGE_API_SIZES = frozenset({"1024x1024", "1024x1536", "1536x1024", "auto"})
 
 API_SIZE_BY_CROP: dict[str, str] = {
