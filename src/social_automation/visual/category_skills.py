@@ -19,6 +19,19 @@ class CategorySkill:
     edit_prompt_hints: str
 
 
+_SOCIAL_FOOD_EDIT_PLAN = (
+    "Modalità SOCIAL APPETIZING (food):\n"
+    "- light_adjustments: exposure ~0.10-0.14, contrast ~0.06-0.10, saturation ~0.03-0.06, "
+    "sharpness ~0.12-0.16\n"
+    "- Recupero ombre sul cibo; toni caldi invitanti; il piatto deve «pop» nel feed\n"
+    "- NON rigenerare bandierina, ingredienti o patatine — solo tono e nitidezza"
+)
+
+_SOCIAL_FOOD_EDIT_PROMPT = (
+    "Social appetizing: lift shadows on food, gentle warmth, controlled saturation — "
+    "crave-worthy for Instagram while keeping flag, ingredients and fries identical."
+)
+
 _FOOD = CategorySkill(
     key="food",
     label="Food & drink",
@@ -109,17 +122,27 @@ def format_category_skill_for_edit_plan(
     business_category: str | None,
     *,
     enabled: bool = True,
+    social_appetizing: bool = False,
 ) -> str:
     if not enabled:
         return ""
-    return resolve_category_skill(business_category).edit_plan_hints.strip()
+    hints = resolve_category_skill(business_category).edit_plan_hints.strip()
+    cat = (business_category or "").strip().lower()
+    if social_appetizing and cat in _FOOD_CATEGORIES:
+        return f"{hints}\n\n{_SOCIAL_FOOD_EDIT_PLAN}"
+    return hints
 
 
 def format_category_skill_for_image_edit(
     business_category: str | None,
     *,
     enabled: bool = True,
+    social_appetizing: bool = False,
 ) -> str:
     if not enabled:
         return ""
-    return resolve_category_skill(business_category).edit_prompt_hints.strip()
+    hints = resolve_category_skill(business_category).edit_prompt_hints.strip()
+    cat = (business_category or "").strip().lower()
+    if social_appetizing and cat in _FOOD_CATEGORIES:
+        return f"{hints}\n\n{_SOCIAL_FOOD_EDIT_PROMPT}"
+    return hints

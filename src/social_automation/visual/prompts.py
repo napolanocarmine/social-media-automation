@@ -39,8 +39,19 @@ _IMAGE_EDIT_API_PREAMBLE_LOW = (
 )
 
 
+_IMAGE_EDIT_API_PREAMBLE_SOCIAL = (
+    "EDIT the attached photograph for social feed — appetizing but authentic. "
+    "Do not generate a new image. Preserve flag/logo, food layers, fries count, and background bokeh. "
+    "Lift shadows on food, add gentle warmth and controlled saturation on the dish — "
+    "make it crave-worthy while keeping every original element identical. "
+    "Main subject crisp and in focus; crop by reframing only.\n\n"
+)
+
+
 def image_edit_api_preamble(settings: Settings | None = None) -> str:
     s = settings or load_settings()
+    if s.visual_social_appetizing:
+        return _IMAGE_EDIT_API_PREAMBLE_SOCIAL
     fidelity = (s.visual_image_input_fidelity or "high").strip().lower()
     if fidelity == "low":
         return _IMAGE_EDIT_API_PREAMBLE_LOW
@@ -102,6 +113,7 @@ def format_edit_plan_for_prompt(
     platform: Platform,
     media_format: MediaFormat,
     hybrid_mode: bool = False,
+    social_appetizing: bool = False,
 ) -> str:
     """Sezione piano editing foto-specifico (come Custom GPT step 1–7)."""
     fmt = image_edit_format_label(platform=platform, media_format=media_format)
@@ -180,7 +192,12 @@ def format_edit_plan_for_prompt(
                 "Esegui in ordine:",
                 "1. Analisi composizione (già fornita sopra)",
                 f"2. Crop/reframe al formato {fmt} (solo taglio bordi, NON ricomporre la scena)",
-                "3. Regolazioni globali leggere (solo tono)",
+                (
+                    "3. Regolazioni tono invitanti per social (recupero ombre, warmth leggero, "
+                    "saturazione controllata sul cibo)"
+                    if social_appetizing
+                    else "3. Regolazioni globali leggere (solo tono)"
+                ),
                 "4. Contrasto / micro-contrasto sul soggetto",
                 "5. Nitidezza selettiva sul prodotto (obbligatoria — soggetto nitido, sfondo bokeh)",
                 "6. Pulizia minima",
@@ -201,6 +218,13 @@ def _load_image_edit_task_template(
         if hybrid_path.is_file():
             return hybrid_path.read_text(encoding="utf-8").strip()
         fallback = repo_root() / "config/brand/image_edit_hybrid_task_prompt.md"
+        if fallback.is_file():
+            return fallback.read_text(encoding="utf-8").strip()
+    if s.visual_social_appetizing:
+        social_path = s.visual_social_prompt_path
+        if social_path.is_file():
+            return social_path.read_text(encoding="utf-8").strip()
+        fallback = repo_root() / "config/brand/image_edit_social_task_prompt.md"
         if fallback.is_file():
             return fallback.read_text(encoding="utf-8").strip()
     path = s.visual_producer_prompt_path
@@ -328,11 +352,13 @@ def _append_category_and_feedback(
     *,
     business_category: str | None,
     settings: Settings,
+    social_appetizing: bool = False,
 ) -> str:
     parts = [prompt]
     skill = format_category_skill_for_image_edit(
         business_category,
         enabled=settings.visual_category_skills_enabled,
+        social_appetizing=social_appetizing,
     )
     if skill:
         parts.append(skill)
@@ -383,12 +409,14 @@ def build_image_edit_user_prompt(
                     platform=platform,
                     media_format=media_format,
                     hybrid_mode=use_hybrid,
+                    social_appetizing=bool(s.visual_social_appetizing),
                 )
             )
         return _append_category_and_feedback(
             "\n\n".join(parts),
             business_category=business_category,
             settings=s,
+            social_appetizing=bool(s.visual_social_appetizing),
         )
     return _append_category_and_feedback(
         build_visual_producer_user_prompt(

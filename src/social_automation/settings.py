@@ -291,6 +291,17 @@ class Settings(BaseSettings):
         default=Path("config/brand/image_edit_hybrid_task_prompt.md"),
         description="Prompt AI in pipeline ibrida (solo nitidezza/pulizia; tono via Pillow).",
     )
+    visual_social_appetizing: bool = Field(
+        default=False,
+        description=(
+            "Se true, prompt editing «social appetizing»: tono più invitante per feed "
+            "(ombre recuperate, warmth, saturazione controllata) preservando elementi originali."
+        ),
+    )
+    visual_social_prompt_path: Path = Field(
+        default=Path("config/brand/image_edit_social_task_prompt.md"),
+        description="Template prompt editing in modalità social appetizing.",
+    )
     visual_image_model: str = Field(
         default="gpt-image-1",
         description="Modello OpenAI Images per editing (es. gpt-image-1, dall-e-2)",

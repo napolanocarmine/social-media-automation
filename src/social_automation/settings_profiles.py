@@ -32,6 +32,7 @@ _PROFILE_ENV_KEYS: dict[str, str] = {
     "visual_category_skills_enabled": "VISUAL_CATEGORY_SKILLS_ENABLED",
     "visual_feedback_learning_enabled": "VISUAL_FEEDBACK_LEARNING_ENABLED",
     "visual_feedback_learning_max_items": "VISUAL_FEEDBACK_LEARNING_MAX_ITEMS",
+    "visual_social_appetizing": "VISUAL_SOCIAL_APPETIZING",
 }
 
 _PROFILE_PRESETS: dict[str, dict[str, Any]] = {
@@ -103,6 +104,7 @@ _PROFILE_PRESETS: dict[str, dict[str, Any]] = {
         "visual_category_skills_enabled": True,
         "visual_feedback_learning_enabled": True,
         "visual_feedback_learning_max_items": 5,
+        "visual_social_appetizing": True,
     },
     "pixel": {
         "visual_produce_mode": "pixel",

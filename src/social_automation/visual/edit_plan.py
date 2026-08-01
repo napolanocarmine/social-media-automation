@@ -30,10 +30,29 @@ def build_image_edit_plan_user_prompt(
     media_format: MediaFormat,
     content_pillar: str,
     channels: list[Platform] | None = None,
+    social_appetizing: bool = False,
 ) -> str:
     ch = normalize_channels(channels, fallback_platform=platform)
     fmt = image_edit_format_label(platform=platform, media_format=media_format)
+    tone_example = (
+        '    "exposure": 0.12,\n'
+        '    "contrast": 0.08,\n'
+        '    "saturation": 0.04,\n'
+        '    "sharpness": 0.14\n'
+        if social_appetizing
+        else '    "exposure": 0.08,\n'
+        '    "contrast": 0.04,\n'
+        '    "saturation": 0.0,\n'
+        '    "sharpness": 0.12\n'
+    )
+    social_note = (
+        "Modalità SOCIAL APPETIZING: piano tono più invitante per feed — recupero ombre sul cibo, "
+        "warmth leggero, saturazione controllata. Elementi originali immutati.\n"
+        if social_appetizing
+        else ""
+    )
     return (
+        f"{social_note}"
         "Modalità Image Edit Plan: analizza la foto e produci un piano di editing fotografico "
         "conservativo per il formato social indicato.\n"
         "NON valutare se la foto è pubblicabile (niente score). "
@@ -46,10 +65,7 @@ def build_image_edit_plan_user_prompt(
         '  "preserve_soft_background": true,\n'
         '  "adjustments_notes": "breve descrizione in italiano delle regolazioni",\n'
         '  "light_adjustments": {\n'
-        '    "exposure": 0.08,\n'
-        '    "contrast": 0.04,\n'
-        '    "saturation": 0.0,\n'
-        '    "sharpness": 0.12\n'
+        f"{tone_example}"
         "  },\n"
         '  "reasoning": "breve sintesi analisi in italiano"\n'
         "}\n"
@@ -80,6 +96,7 @@ def _enrich_edit_plan_prompt(
     skill = format_category_skill_for_edit_plan(
         business_category,
         enabled=settings.visual_category_skills_enabled,
+        social_appetizing=bool(settings.visual_social_appetizing),
     )
     if skill:
         parts.append(skill)
@@ -115,6 +132,7 @@ def run_image_edit_plan(
         media_format=media_format,
         content_pillar=pillar,
         channels=channels,
+        social_appetizing=bool(settings.visual_social_appetizing),
     )
     user = _enrich_edit_plan_prompt(
         user,

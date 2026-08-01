@@ -34,6 +34,11 @@ def _compiler_system_message(settings: Settings) -> str:
         parts.append(
             "Strict preservation mode: crop by reframing only, no scene recomposition."
         )
+    if settings.visual_social_appetizing:
+        parts.append(
+            "Social appetizing mode: lift shadows on food, gentle warmth, controlled saturation — "
+            "make the dish crave-worthy for Instagram. Never regenerate flag, ingredients, or fries."
+        )
     if settings.visual_precrop_before_api:
         parts.append(
             "If the input says crop is already done, do NOT ask for cropping."

@@ -34,6 +34,7 @@ def visual_pipeline_config(settings: SettingsDep) -> dict:
             for value in INPUT_FIDELITY_OPTIONS
         ],
         "default_input_fidelity": settings.visual_image_input_fidelity,
+        "social_appetizing": bool(settings.visual_social_appetizing),
     }
 
 
