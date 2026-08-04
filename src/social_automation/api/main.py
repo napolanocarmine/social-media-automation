@@ -21,6 +21,7 @@ from social_automation.api.routers import (
     media,
     oauth_google,
     plans,
+    uploads,
 )
 
 API_V1_PREFIX = "/api/v1"
@@ -55,6 +56,7 @@ def create_app() -> FastAPI:
     app.include_router(images.router, prefix=API_V1_PREFIX)
     app.include_router(media.router, prefix=API_V1_PREFIX)
     app.include_router(batches.router, prefix=API_V1_PREFIX)
+    app.include_router(uploads.router, prefix=API_V1_PREFIX)
     app.include_router(plans.router, prefix=API_V1_PREFIX)
     app.include_router(calendar.router, prefix=API_V1_PREFIX)
     app.include_router(dispatch.router, prefix=API_V1_PREFIX)

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Pagination } from "../components/Pagination";
 import { FormatPlatformFilters, platformForApi } from "../components/FormatPlatformFilters";
 import {
@@ -65,12 +66,21 @@ function CopyPreview({ copy, platform }: { copy: CopyPack; platform: string }) {
 
 function PlanWizard() {
   const queryClient = useQueryClient();
-  const [platform, setPlatform] = useState("instagram");
-  const [format, setFormat] = useState("post");
+  const [searchParams] = useSearchParams();
+  const [platform, setPlatform] = useState(() => searchParams.get("platform") || "instagram");
+  const [format, setFormat] = useState(() => searchParams.get("format") || "post");
   const [category, setCategory] = useState("tutte");
   const [page, setPage] = useState(0);
-  const [step, setStep] = useState(1);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [step, setStep] = useState(() => {
+    const fmt = searchParams.get("format");
+    const raw = searchParams.get("imageId");
+    if (fmt === "story" && raw && Number.isFinite(Number(raw))) return 2;
+    return 1;
+  });
+  const [selectedId, setSelectedId] = useState<number | null>(() => {
+    const raw = searchParams.get("imageId");
+    return raw ? Number(raw) : null;
+  });
   const [selectedObjectives, setSelectedObjectives] = useState<string[]>(["Engagement"]);
   const [channels, setChannels] = useState<string[]>(["instagram"]);
   const [copyPack, setCopyPack] = useState<CopyPack | null>(null);
@@ -156,6 +166,34 @@ function PlanWizard() {
   const items = listQuery.data?.items ?? [];
   const selectedImage = items.find((i) => i.id === selectedId);
 
+  useEffect(() => {
+    const imageIdRaw = searchParams.get("imageId");
+    if (!imageIdRaw) return;
+    const imageId = Number(imageIdRaw);
+    if (!Number.isFinite(imageId)) return;
+    setSelectedId(imageId);
+    const fmt = searchParams.get("format");
+    const plat = searchParams.get("platform");
+    if (fmt) setFormat(fmt);
+    if (plat) setPlatform(plat);
+    if (fmt === "story") setStep(2);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (selectedId === null || format !== "post") return;
+    void (async () => {
+      try {
+        const existing = await fetchImageCopy(selectedId);
+        if (existing?.copy) {
+          setCopyPack(existing.copy);
+          setCaption(captionFromCopy(existing.copy, platform));
+        }
+      } catch {
+        /* no copy yet */
+      }
+    })();
+  }, [selectedId, format, platform]);
+
   async function pickImage(image: ImageSummary) {
     setSelectedId(image.id);
     setCopyPack(null);
@@ -196,6 +234,25 @@ function PlanWizard() {
 
         {format === "story" ? (
           <div className="space-y-3">
+            <div className="rounded-lg border border-[var(--story-accent)]/30 bg-[var(--story-accent)]/10 p-3 text-sm">
+              <p className="font-medium">Pubblicazione su entrambi i canali</p>
+              <p className="mt-1 text-[var(--story-muted)]">
+                La stessa story verrà pianificata contemporaneamente su{" "}
+                <strong className="text-[var(--story-text)]">Instagram</strong> e{" "}
+                <strong className="text-[var(--story-text)]">Facebook</strong> con data e ora
+                identiche (o la stessa regola settimanale).
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {(["instagram", "facebook"] as const).map((ch) => (
+                  <span
+                    key={ch}
+                    className="rounded-full border border-[var(--story-accent)]/40 bg-[var(--story-bg)] px-2.5 py-0.5 text-xs font-medium uppercase"
+                  >
+                    {ch === "instagram" ? "Instagram" : "Facebook"}
+                  </span>
+                ))}
+              </div>
+            </div>
             <fieldset className="flex flex-wrap gap-4 text-sm">
               <label className="flex items-center gap-2">
                 <input
@@ -312,7 +369,9 @@ function PlanWizard() {
             onClick={() => saveMutation.mutate()}
             className="rounded-lg bg-[var(--story-accent)] px-4 py-2 text-sm font-semibold text-black disabled:opacity-50"
           >
-            Salva pianificazione
+            {format === "story"
+              ? "Salva pianificazione su IG + FB"
+              : "Salva pianificazione"}
           </button>
         </div>
       </div>
@@ -454,10 +513,12 @@ function PlanWizard() {
       ) : null}
 
       {selectedId !== null && format === "story" ? (
-        <p className="text-sm text-[var(--story-muted)]">
-          Story selezionata: #{selectedId}. Verrà pubblicata su Instagram e Facebook. Continua per
-          impostare data/ora o regola settimanale.
-        </p>
+        <div className="rounded-lg border border-[var(--story-border)] bg-[var(--story-surface)] p-4 text-sm">
+          <p>
+            Story selezionata: <strong>#{selectedId}</strong>. Verrà pubblicata su Instagram e
+            Facebook nello stesso momento — non serve scegliere un solo canale.
+          </p>
+        </div>
       ) : null}
 
       <button

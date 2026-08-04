@@ -167,6 +167,34 @@ export type PlanActionResponse = {
   scheduled_for?: string | null;
 };
 
+export type UploadDimensionValidation = {
+  valid: boolean;
+  width: number;
+  height: number;
+  expected_width: number;
+  expected_height: number;
+  expected_label: string;
+};
+
+export type UploadValidateResponse = {
+  filename: string;
+  dimensions: UploadDimensionValidation;
+};
+
+export type UploadBatchResponse = {
+  run_ai_retouch: boolean;
+  batch_id: number | null;
+  image_ids: number[];
+  items: Array<{
+    image_id?: number | null;
+    name: string;
+    processed_file?: string | null;
+    dimensions?: UploadDimensionValidation | null;
+    error?: string | null;
+  }>;
+  redirect: string;
+};
+
 async function parseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const text = await response.text();
@@ -620,4 +648,51 @@ export async function fetchBatchList(params: {
   if (params.platform && params.platform !== "tutti") qs.set("platform", params.platform);
   if (params.format && params.format !== "tutti") qs.set("format", params.format);
   return parseJson(await fetch(`/api/v1/batches?${qs}`));
+}
+
+export async function validateUploadFile(
+  file: File,
+  params: { platform: string; media_format: string },
+): Promise<UploadValidateResponse> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("platform", params.platform);
+  form.append("media_format", params.media_format);
+  return parseJson(
+    await fetch("/api/v1/uploads/validate", {
+      method: "POST",
+      body: form,
+    }),
+  );
+}
+
+export async function submitUploadBatch(body: {
+  files: File[];
+  platform: string;
+  media_format: string;
+  category: string;
+  run_ai_retouch: boolean;
+  marketing_objectives: string[];
+  resize_actions: Record<string, "keep" | "resize">;
+  visual_image_input_fidelity?: string;
+}): Promise<UploadBatchResponse> {
+  const form = new FormData();
+  for (const file of body.files) {
+    form.append("files", file);
+  }
+  form.append("platform", body.platform);
+  form.append("media_format", body.media_format);
+  form.append("category", body.category);
+  form.append("run_ai_retouch", body.run_ai_retouch ? "true" : "false");
+  form.append("marketing_objectives", JSON.stringify(body.marketing_objectives));
+  form.append("resize_actions", JSON.stringify(body.resize_actions));
+  if (body.visual_image_input_fidelity) {
+    form.append("visual_image_input_fidelity", body.visual_image_input_fidelity);
+  }
+  return parseJson(
+    await fetch("/api/v1/uploads", {
+      method: "POST",
+      body: form,
+    }),
+  );
 }

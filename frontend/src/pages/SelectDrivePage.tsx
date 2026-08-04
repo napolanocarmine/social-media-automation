@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Pagination } from "../components/Pagination";
 import {
   channelsForBatch,
@@ -298,12 +298,20 @@ export function SelectDrivePage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h2 className="text-2xl font-semibold">① Seleziona da Drive</h2>
-        <p className="mt-1 text-[var(--story-muted)]">
-          Carica le foto da Drive, seleziona quelle da passare a Story AI e avvia la coda.
-          La selezione resta salvata finché non chiudi il browser.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-semibold">① Seleziona da Drive</h2>
+          <p className="mt-1 text-[var(--story-muted)]">
+            Carica le foto da Drive, seleziona quelle da passare a Story AI e avvia la coda.
+            La selezione resta salvata finché non chiudi il browser.
+          </p>
+        </div>
+        <Link
+          to="/workflow/source"
+          className="rounded-lg border border-[var(--story-border)] px-3 py-2 text-sm hover:border-[var(--story-accent)]/50"
+        >
+          ← Altra origine
+        </Link>
       </header>
 
       {oauthNotice && (

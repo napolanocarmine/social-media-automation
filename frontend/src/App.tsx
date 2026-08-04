@@ -8,6 +8,8 @@ import { HomePage } from "./pages/HomePage";
 import { PlanPage } from "./pages/PlanPage";
 import { PublishPage } from "./pages/PublishPage";
 import { SelectDrivePage } from "./pages/SelectDrivePage";
+import { SourceChoicePage } from "./pages/SourceChoicePage";
+import { UploadPage } from "./pages/UploadPage";
 
 const queryClient = new QueryClient();
 
@@ -18,7 +20,9 @@ export default function App() {
         <Routes>
           <Route element={<AppLayout />}>
             <Route index element={<HomePage />} />
+            <Route path="workflow/source" element={<SourceChoicePage />} />
             <Route path="workflow/select" element={<SelectDrivePage />} />
+            <Route path="workflow/upload" element={<UploadPage />} />
             <Route path="workflow/output" element={<AiOutputPage />} />
             <Route path="workflow/approve" element={<ApprovePage />} />
             <Route path="workflow/plan" element={<PlanPage />} />

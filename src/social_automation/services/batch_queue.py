@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 from social_automation.db.store import (
@@ -12,13 +13,16 @@ from social_automation.db.store import (
     get_batch,
     get_batch_stop_message,
     get_next_queued_batch_item,
+    set_image_manual_publication_valid,
     update_batch_progress,
+    update_vision_eval,
 )
 from social_automation.drive.client import DriveClient
 from social_automation.models import DriveAsset, MediaFormat, Platform
+from social_automation.services.upload import _apply_resize_action
 from social_automation.settings import Settings
 from social_automation.visual.input_fidelity import settings_with_input_fidelity
-from social_automation.workflow.process_photo import process_drive_asset
+from social_automation.workflow.process_photo import process_drive_asset, process_local_photo
 
 _LOG = logging.getLogger(__name__)
 
@@ -95,25 +99,70 @@ def process_next_batch_item(settings: Settings) -> dict[str, Any]:
         category=payload.get("category"),
         path_segments=list(payload.get("path_segments") or []),
     )
+    source_type = str(payload.get("source_type") or "drive").strip().lower()
+    biz_category = str(item.get("business_category") or payload.get("business_category") or "")
+    channel_platforms = [Platform(str(c)) for c in (payload.get("channels") or [])] or None
+    objectives = list(payload.get("marketing_objectives") or [])
 
     try:
-        drive = DriveClient.from_settings(settings)
         effective_settings = settings_with_input_fidelity(
             settings,
             payload.get("visual_image_input_fidelity"),
         )
-        out = process_drive_asset(
-            asset,
-            platform=platform,
-            media_format=media_format,
-            settings=effective_settings,
-            business_category=str(item.get("business_category") or payload.get("business_category") or ""),
-            drive=drive,
-            auto_approve=False,
-            generate_copy=False,
-            marketing_objectives=list(payload.get("marketing_objectives") or []),
-            channels=[Platform(str(c)) for c in (payload.get("channels") or [])] or None,
-        )
+        if source_type == "upload":
+            local_raw = str(payload.get("local_path") or "").strip()
+            if not local_raw:
+                raise ValueError("Upload batch item senza local_path")
+            source_path = Path(local_raw)
+            if not source_path.is_file():
+                raise FileNotFoundError(f"File upload non trovato: {local_raw}")
+            resize_action = str(payload.get("resize_action") or "keep")
+            if resize_action == "resize":
+                prepared = settings.output_dir / f"upload_prep_{payload.get('upload_id') or item_index}.jpg"
+                source_path = _apply_resize_action(
+                    source_path,
+                    prepared,
+                    platform=platform,
+                    media_format=media_format,
+                    action="resize",
+                )
+            out = process_local_photo(
+                source_path,
+                platform=platform,
+                media_format=media_format,
+                business_category=biz_category,
+                settings=effective_settings,
+                image_name=asset.name,
+                source_asset_id=str(payload.get("upload_id") or asset.file_id),
+                source_asset_name=asset.name,
+                auto_approve=True,
+                generate_copy=False,
+                marketing_objectives=objectives,
+                channels=channel_platforms,
+            )
+            image_id = int(out["image_id"])
+            set_image_manual_publication_valid(settings.db_path, image_id=image_id, value=1)
+            update_vision_eval(
+                settings.db_path,
+                image_id=image_id,
+                vision_pass=1,
+                reason="Upload manuale con AI auto-approvato",
+            )
+        else:
+            drive = DriveClient.from_settings(settings)
+            out = process_drive_asset(
+                asset,
+                platform=platform,
+                media_format=media_format,
+                settings=effective_settings,
+                business_category=biz_category,
+                drive=drive,
+                auto_approve=False,
+                generate_copy=False,
+                marketing_objectives=objectives,
+                channels=channel_platforms,
+            )
+            image_id = int(out["image_id"])
         add_batch_item(
             db_path,
             batch_id=batch_id,
@@ -141,7 +190,7 @@ def process_next_batch_item(settings: Settings) -> dict[str, Any]:
             "batch_id": batch_id,
             "item_index": item_index,
             "status": "completed",
-            "image_id": int(out["image_id"]),
+            "image_id": image_id,
         }
     except Exception as exc:
         msg = str(exc).strip() or repr(exc)

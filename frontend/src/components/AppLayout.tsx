@@ -2,7 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 
 const workflowLinks = [
   { to: "/", label: "Home", end: true },
-  { to: "/workflow/select", label: "① Seleziona" },
+  { to: "/workflow/source", label: "① Seleziona" },
   { to: "/workflow/output", label: "② Output AI" },
   { to: "/workflow/approve", label: "③ Approva" },
   { to: "/workflow/plan", label: "④ Pianifica" },
@@ -29,7 +29,7 @@ export function AppLayout() {
           </p>
           <h1 className="text-lg font-semibold">Editorial Tool</h1>
           <p className="mt-1 text-xs text-[var(--story-muted)]">
-            Drive → AI → approva → pianifica → Meta
+            Drive → upload / AI → approva → pianifica → Meta
           </p>
         </div>
         <nav className="space-y-1">

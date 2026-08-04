@@ -8,7 +8,7 @@ import { getErrorMessage } from "../lib/api/errors";
 import { ErrorNotice } from "../components/ErrorNotice";
 
 const workflowRouteByPage: Record<string, string> = {
-  "① Seleziona": "/workflow/select",
+  "① Seleziona": "/workflow/source",
   "② Output AI": "/workflow/output",
   "③ Approva": "/workflow/approve",
   "④ Pianifica": "/workflow/plan",
@@ -54,7 +54,7 @@ export function HomePage() {
 
   const stats = statsQuery.data;
   const nextPage = nextStepQuery.data?.page ?? "① Seleziona";
-  const nextRoute = workflowRouteByPage[nextPage] ?? "/workflow/select";
+  const nextRoute = workflowRouteByPage[nextPage] ?? "/workflow/source";
 
   return (
     <div className="space-y-8">
