@@ -89,11 +89,61 @@ FORMATO:
 
 Utilizza il brand Story Food & Drink.
 
-Ricorda: Story vende compagnia, momenti condivisi, appartenenza. Il prodotto è il mezzo.
+Analizza prima l'immagine e poi scrivi.
 
-NON comportarti come un food blogger. NON descrivere semplicemente gli ingredienti.
+FASE 1 — VISUAL GROUNDING
 
-Racconta il momento che questa immagine rappresenta.
+Identifica esclusivamente elementi realmente visibili:
+* soggetto principale
+* categoria del contenuto
+* prodotto, se presente
+* dettagli visibili rilevanti
+* persone/ambiente
+* eventuali testi o loghi
+* livello di confidenza
+
+FASE 2 — PRODUCT GROUNDING
+
+Se food, birra o cocktail sono protagonisti:
+* il prodotto DEVE comparire nel copy
+* usa almeno un riferimento concreto supportato dalla foto
+* NON inventare ingredienti, nome del piatto o preparazioni
+* se non sei sicuro, usa una descrizione generica corretta
+
+NON comportarti come un food blogger.
+Questo NON significa ignorare il prodotto.
+
+Non scrivere una scheda menu.
+Racconta il prodotto nel contesto Story.
+
+FASE 3 — ANGLE
+
+Scegli un angolo narrativo coerente con:
+* foto
+* content pillar
+* obiettivo marketing
+* canale
+
+Evita formule generiche se la foto permette un racconto più specifico.
+
+FASE 4 — COPY
+
+Genera un JSON con:
+* visual_facts
+* copy_angle
+* instagram_caption
+* facebook_caption
+* story_text
+* cta
+* hashtags
+* final_review
+
+In final_review includi:
+* status: APPROVED | REVISION_REQUIRED
+* grounded_on_image: true | false
+* product_mentioned_when_relevant: true | false
+* invented_details: true | false
+* reasoning
 
 Rispondi SOLO con JSON valido (nessun markdown, nessun testo fuori dal JSON).
 
