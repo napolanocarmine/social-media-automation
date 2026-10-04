@@ -1,70 +1,66 @@
-Image Editing Task. Preserve 100% of the original image content. Do not regenerate or recreate the scene.
+Image Editing Task — conservative enhancement.
 
-Utilizza ESCLUSIVAMENTE la foto allegata come immagine sorgente.
-Non rigenerare la scena.
-Non reinterpretare il soggetto.
-Non modificare ingredienti, proporzioni, sfondo, oggetti, logo, bandierina o composizione.
-Non creare una nuova immagine.
-Esegui soltanto un editing fotografico professionale e realistico.
+Use the supplied photograph as the only source of truth.
 
-Canale
+Goal:
+the same photograph, professionally corrected.
+Not a new photograph.
+
+Allowed:
+- minor tonal correction
+- minor exposure correction
+- minor contrast correction
+- selective sharpening of detail that already exists
+- minimal cleanup only where explicitly needed
+- crop/reframe without scene reconstruction
+
+Forbidden:
+- scene reconstruction
+- replacing or adding objects
+- changing ingredients
+- changing people or facial details
+- changing product geometry
+- rewriting text
+- redrawing logos
+- recreating labels
+- changing Story flags or brand assets
+- inventing detail in blurred or out-of-focus areas
+- artificial HDR
+- aggressive saturation
+- advertising / food-magazine look
+- synthetic depth of field
+
+Text, logos, labels, menus, signs and brand assets are immutable.
+
+Sharpness rule:
+Sharpen only information that already exists in the source pixels.
+If an area is genuinely out of focus, do not invent texture, letters,
+logo details, facial details or food structure to make it look sharp.
+
+Never perform generative sharpening on text, logos or labels.
+
+Channel:
 {channels}
 
-Crop (solo reframing — NON rigenerare)
-Adatta al formato {format} tramite crop/reframe della foto esistente.
-NON ricomporre la scena per riempire il nuovo aspect ratio.
-NON spostare, ridisegnare o rigenerare burger, patatine, bandierina o oggetti di scena.
-Elimina solo lo spazio superfluo ai bordi.
-Mantieni {subject} protagonista nella stessa posizione relativa.
-Mantieni l'equilibrio della composizione originale.
+Target format:
+{format}
 
-Elementi immutabili (priorità assoluta)
-bandierina Story con logo e testo (identica, leggibile, stessa posizione)
-patatine e contorni se presenti (stessa forma, quantità e posizione)
-ingredienti del burger/piatto (stessi strati, stesse proporzioni)
-sfondo bokeh esistente (non sostituire né rifare)
-bottiglie/bicchieri sfocati in background (se presenti, invariati)
+Main subject:
+{subject}
 
-Correzioni consentite (solo tono e nitidezza)
-lieve aumento esposizione (+0,2 EV circa)
-lieve recupero delle ombre
-lieve incremento contrasto
-lieve incremento micro-contrasto sul soggetto
+Preserve the original:
+- composition and relative position of subjects
+- atmosphere and ambient lighting
+- realistic colors
+- food ingredients and proportions
+- background and bokeh
+- visible brand elements
 
-Nitidezza (priorità sul prodotto)
-Il soggetto principale ({subject_short}, bandierina, patatine se presenti) deve essere nitido e a fuoco.
-Applica nitidezza selettiva sul prodotto — recupera dettaglio se leggermente morbido nell'originale.
-Lo sharpening sul soggetto NON è profondità di campo artificiale: lo sfondo resta bokeh.
-Solo lo sfondo fuori fuoco resta morbido; il cibo no.
+If the requested crop changes aspect ratio, remove only expendable edge space.
+Do not recompose or regenerate the scene to fill missing areas.
 
-Correzioni vietate
-nessun HDR
-nessuna saturazione eccessiva
-nessun effetto food magazine
-nessun look pubblicitario
-nessun colore artificiale
-nessuna modifica agli ingredienti
-nessuna modifica alla forma del soggetto
-nessuna modifica degli elementi laterali (es. contorno, patatine)
-nessuna modifica della bandierina o del logo
-nessuna sostituzione dello sfondo
-nessuna profondità di campo artificiale
-nessun aumento artificiale della profondità di campo se lo sfondo è già sfocato
-nessuna generazione AI di nuovi elementi
-nessuna ricomposizione della scena per il crop
+Final result:
+"the same photo, shot a little better"
 
-Obiettivo finale
-L'immagine deve sembrare:
-"la stessa foto scattata meglio"
-e non
-"una nuova immagine generata dall'AI".
-
-Mantieni:
-atmosfera autentica del locale
-luci originali
-colori realistici
-mood naturale
-identità visiva di Story Food & Drink
-
-Output finale:
-una fotografia reale ottimizzata, indistinguibile da un normale lavoro Lightroom professionale.
+and never:
+"a newly generated AI image".
