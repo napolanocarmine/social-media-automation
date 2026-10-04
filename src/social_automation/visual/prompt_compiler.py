@@ -15,7 +15,9 @@ _COMPILER_SYSTEM_BASE = (
     "The model must preserve faces, logos, flags, food shape, background bokeh. "
     "Output ONLY the final English prompt for the image tool — no preamble, "
     "no markdown, no JSON. Keep all preserve/forbid rules. Be specific about selective "
-    "sharpness targets."
+    "sharpness targets. Do not convert a conservative enhancement request into a creative generation request. "
+    "Never add descriptive details that were not present in the draft or visual edit plan. "
+    "Do not infer missing ingredients, text, logos, labels, faces, or scene elements."
 )
 
 
