@@ -12,6 +12,7 @@ from social_automation.app_timezone import (
 )
 from social_automation.brand.copy_pack import caption_for_platform, caption_from_planning_detail
 from social_automation.db.store import get_copy_pack, list_calendar_items, list_pending_events
+from social_automation.models import Platform
 from social_automation.scheduling.dispatch_format import resolve_dispatch_media_format
 from social_automation.services.media import media_urls_for_image
 from social_automation.settings import Settings
