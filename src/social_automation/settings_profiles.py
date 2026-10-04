@@ -36,6 +36,31 @@ _PROFILE_ENV_KEYS: dict[str, str] = {
 }
 
 _PROFILE_PRESETS: dict[str, dict[str, Any]] = {
+    "story_safe": {
+        "visual_produce_mode": "pixel",
+        "visual_review_enabled": True,
+        "visual_edit_plan_enabled": True,
+        "visual_edit_prompt_compiler": False,
+        "visual_use_ai_image_edit": False,
+        "visual_edit_include_kb": True,
+        "visual_kb_scope_enabled": True,
+        "visual_parallel_copy": False,
+        "visual_smart_routing": True,
+        "visual_pipeline_trace": True,
+        "visual_gpt_pure_mode": False,
+        "visual_hybrid_tone_pipeline": False,
+        "visual_image_backend": "responses",
+        "visual_precrop_before_api": False,
+        "visual_skip_post_crop": False,
+        "visual_disable_pillow_retouch": False,
+        "visual_image_input_fidelity": "high",
+        "visual_image_quality": "high",
+        "visual_jpeg_export_quality": 95,
+        "visual_category_skills_enabled": True,
+        "visual_feedback_learning_enabled": True,
+        "visual_feedback_learning_max_items": 5,
+        "visual_social_appetizing": False,
+    },
     "fast": {
         "visual_produce_mode": "generative",
         "visual_review_enabled": False,

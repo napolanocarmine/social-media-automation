@@ -446,7 +446,7 @@ class Settings(BaseSettings):
         ),
     )
     visual_pipeline_profile: str = Field(
-        default="quality",
+        default="story_safe",
         description=(
             "Preset pipeline visuale: fast | balanced | quality | pixel | custom. "
             "Le variabili env esplicite hanno priorità sul profilo."

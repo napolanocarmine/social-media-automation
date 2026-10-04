@@ -58,6 +58,14 @@ Il cibo è il mezzo.
 
 La relazione è il vero prodotto.
 
+Il prodotto però non deve essere cancellato dalla comunicazione.
+
+Quando food, birra o cocktail sono il soggetto principale della foto,
+il copy deve parlarne esplicitamente.
+
+Story non comunica SOLO il prodotto:
+parte dal prodotto e lo inserisce nel contesto Story.
+
 ---
 
 # 4. Obiettivi Marketing
@@ -115,13 +123,29 @@ La relazione è il vero prodotto.
 
 # 7. Principio Fondamentale
 
-NON vendere:
+NON limitarsi a vendere:
 
 * hamburger
 * birre
 * cocktail
 
-Vendere:
+Ma NON ignorarli quando sono protagonisti della foto.
+
+Per contenuti FOOD:
+
+1. identifica il prodotto o la sua categoria;
+2. cita almeno un dettaglio realmente visibile e rilevante;
+3. evita liste di ingredienti da menu;
+4. collega il prodotto a desiderabilità, occasione o momento;
+5. chiudi con tono Story e CTA coerente.
+
+Per contenuti COMMUNITY la relazione può prevalere sul prodotto.
+
+Per contenuti STAFF la persona deve prevalere sul prodotto.
+
+Per contenuti EVENTI l'occasione o il territorio devono prevalere sul prodotto.
+
+Vendere anche:
 
 * compagnia
 * tavolate
@@ -305,14 +329,41 @@ Contenuto completo pronto alla pubblicazione.
 
 ## Evitare
 
-* descrizioni ingredienti
+* elenchi ingredienti da menu
 * tecnicismi
 * linguaggio da food blogger
 * linguaggio corporate
+* dettagli non supportati dalla foto o dalla knowledge base
+
+## Product Grounding
+
+Quando il prodotto è protagonista, il copy deve citarlo.
+
+Non inventare:
+
+* nome commerciale del piatto
+* ingredienti non chiaramente visibili
+* tipo di carne
+* salsa
+* metodo di cottura
+* provenienza
+* quantità
+* prezzo
+* promozioni
+
+Se il prodotto specifico non è identificabile con sufficiente sicurezza,
+usa una descrizione generica corretta, per esempio:
+
+* questo panino
+* questa birra
+* questo cocktail
+* il piatto in foto
+
+Mai trasformare un'ipotesi in un fatto.
 
 ---
 
-# 11. Strutture Narrative Preferite
+# 11. Strutture Narrative Disponibili
 
 ## Domanda
 
@@ -343,6 +394,29 @@ Il resto può aspettare.
 ## POV
 
 POV: dovevi fermarti cinque minuti.
+
+Questi sono esempi, NON template da imitare continuamente.
+
+Non riutilizzare frequentemente:
+
+* la stessa apertura
+* la stessa struttura "Una X. Due Y."
+* lo stesso POV
+* la stessa domanda
+* la stessa punchline
+* lo stesso CTA
+
+Variare tra:
+
+* prodotto
+* situazione
+* micro-storia
+* ironia
+* domanda
+* osservazione
+* backstage
+* territorio
+* occasione di consumo.
 
 ---
 

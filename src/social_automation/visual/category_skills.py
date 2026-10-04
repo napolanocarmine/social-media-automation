@@ -47,7 +47,8 @@ _FOOD = CategorySkill(
     edit_prompt_hints=(
         "Categoria FOOD: nitidezza selettiva sul cibo, bandierina e patatine — "
         "soggetto a fuoco e nitido, sfondo bokeh morbido. "
-        "Non rigenerare logo/bandierina."
+        "Non rigenerare logo/bandierina. "
+        "La nitidezza deve valorizzare dettaglio già presente: non inventare texture, testo o ingredienti mancanti."
     ),
 )
 
